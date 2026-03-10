@@ -1,0 +1,93 @@
+import atexit
+import os
+from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
+from typing import Optional
+from dotenv import load_dotenv
+from pathlib import Path
+
+class BaseRepository:
+    _db_init = False
+    _pool: Optional[ConnectionPool] = None
+
+    @staticmethod
+    def _get_conn_string() -> str:
+        try:
+            load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+            server = os.environ["SERVER"]
+            user = os.environ["USER"]
+            password = os.environ["PASSWORD"]
+            database = os.environ["DATABASE"]
+            port = os.environ["PORT"]
+            address = os.environ["ADDRESS"]
+
+            return f"{server}://{user}:{password}@{address}:{port}/{database}"
+
+        except KeyError as e:
+            raise e
+
+        except Exception as e:
+            raise e
+
+    @classmethod
+    def _close_pool(cls) -> None:
+        if cls._pool:
+            cls._pool.close()
+            cls._pool = None
+
+    @classmethod
+    def _get_pool(cls) -> ConnectionPool:
+        if not cls._pool:
+            try:
+                conn_string = cls._get_conn_string()
+                cls._pool = ConnectionPool(
+                    conninfo=conn_string,
+                    timeout=1.0,
+                    open=True,
+                    reconnect_failed=lambda pool: pool.close() if not cls._db_init else None
+
+                )
+                cls._pool.open()
+                atexit.register(cls._close_pool)
+            except Exception as e:
+                raise e
+
+        return cls._pool
+
+    @classmethod
+    def _setup_db(cls) -> None:
+        if cls._db_init:
+            return
+
+        init_queries = [
+            "CREATE TABLE IF NOT EXISTS channel ( id SERIAL PRIMARY KEY, title TEXT, link TEXT UNIQUE );",
+            "CREATE TABLE IF NOT EXISTS article ( id SERIAL PRIMARY KEY, title TEXT, link TEXT UNIQUE, description TEXT, pub_date TIMESTAMPTZ, channel_id INTEGER REFERENCES channel(id) );",
+            "CREATE TABLE IF NOT EXISTS logging ( id SERIAL PRIMARY KEY, timestamp TIMESTAMPTZ, status TEXT, module TEXT, method TEXT, message TEXT );"
+        ]
+
+        pool = cls._get_pool()
+        try:
+            cls._db_init = True
+            with pool.connection() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    for query in init_queries:
+                        cur.execute(query)
+
+                conn.commit()
+
+        except Exception as e:
+            raise e
+
+    def _execute(self, query: str, params: Optional[tuple] = None) -> list[dict]:
+        pool = self._get_pool()
+        self._setup_db()
+        try:
+            with pool.connection() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(query, params or ())
+
+                    return cur.fetchall()
+
+        except Exception as e:
+            raise e
