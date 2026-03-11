@@ -3,7 +3,7 @@ from app.repositories import ArticleRepository, ChannelRepository
 from app.services import DatabaseService
 from app.schemas import ArticleDTO
 
-article_router_v1 = APIRouter()
+article_router = APIRouter()
 
 def get_database_service() -> DatabaseService:
     return DatabaseService(
@@ -11,7 +11,7 @@ def get_database_service() -> DatabaseService:
         channel_repository=ChannelRepository()
     )
 
-@article_router_v1.get("/articles", response_model=list[ArticleDTO])
+@article_router.get("/articles", response_model=list[ArticleDTO])
 def get_articles(
         hours: int = 1,
         channel_ids: list[int] = Query(default=None),

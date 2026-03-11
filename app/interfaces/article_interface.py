@@ -1,11 +1,8 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 from app.models import Article
 
 class ArticleInterface(ABC):
     @abstractmethod
-    def get_articles(self) -> list[Article]:
-        pass
-
-    @abstractmethod
-    def get_articles_by_channels(self, channel_ids: list[int]) -> list[Article]:
-        pass
+    def get_articles(self, channel_ids: Optional[list[int]] = None, hours: int = 1) -> list[Article]:
+        raise NotImplementedError("get_articles method not implemented")

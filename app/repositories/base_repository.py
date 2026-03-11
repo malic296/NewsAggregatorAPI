@@ -7,28 +7,29 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 class BaseRepository:
-    _db_init = False
+    _db_init: bool = False
     _pool: Optional[ConnectionPool] = None
+    _conn_string: Optional[str] = None
 
-    @staticmethod
-    def _get_conn_string() -> str:
-        try:
-            load_dotenv(Path(__file__).parent.parent.parent / ".env")
+    @classmethod
+    def _get_conn_string(cls) -> str:
+        if not cls._conn_string:
+            try:
+                load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
-            server = os.environ["SERVER"]
-            user = os.environ["USER"]
-            password = os.environ["PASSWORD"]
-            database = os.environ["DATABASE"]
-            port = os.environ["PORT"]
-            address = os.environ["ADDRESS"]
+                server = os.environ["SERVER"]
+                user = os.environ["USER"]
+                password = os.environ["PASSWORD"]
+                database = os.environ["DATABASE"]
+                port = os.environ["PORT"]
+                address = os.environ["ADDRESS"]
 
-            return f"{server}://{user}:{password}@{address}:{port}/{database}"
+                cls._conn_string = f"{server}://{user}:{password}@{address}:{port}/{database}"
 
-        except KeyError as e:
-            raise e
+            except KeyError as e:
+                raise e
 
-        except Exception as e:
-            raise e
+        return cls._conn_string
 
     @classmethod
     def _close_pool(cls) -> None:

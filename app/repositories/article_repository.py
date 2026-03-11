@@ -1,21 +1,19 @@
+from typing import Optional
+
 from app.models import Article
 from .base_repository import BaseRepository
 from app.interfaces.article_interface import ArticleInterface
+from datetime import datetime, timezone, timedelta
 
 class ArticleRepository(BaseRepository, ArticleInterface):
-    def get_articles(self) -> list[Article]:
-        query = "SELECT * FROM article ORDER BY pub_date DESC"
-        db_result = self._execute(query)
+    def get_articles(self, channel_ids: Optional[list[int]] = None, hours: int = 1) -> list[Article]:
+        if channel_ids is None or not isinstance(channel_ids, list) or len(channel_ids) == 0 :
+            query = "SELECT * FROM article WHERE pub_date >= %s ORDER BY pub_date DESC"
+            params = (datetime.now(timezone.utc) - timedelta(hours=hours),)
 
-        try:
-            articles: list[Article] = [Article(**article) for article in db_result]
-        except Exception as e:
-            raise e
-        return articles
-
-    def get_articles_by_channels(self, channel_ids: list[int]) -> list[Article]:
-        query = "SELECT * FROM article WHERE channel_id = ANY(%s) ORDER BY pub_date DESC"
-        params = (channel_ids, )
+        else:
+            query = "SELECT * FROM article WHERE channel_id = ANY(%s) AND pub_date >= %s ORDER BY pub_date DESC"
+            params = (channel_ids, datetime.now(timezone.utc) - timedelta(hours=hours),)
         db_result = self._execute(query, params)
 
         try:
