@@ -15,11 +15,13 @@ class EmailService:
         except Exception as e:
             raise e
 
-    def send_verification_code(self, address, code: int) -> None:
-        params = {
-            "from": "FedUp <verification@fedup.com>",
-            "to": address,
+    def send_verification_code(self, email: str, code: int) -> None:
+        return
+        params: resend.Emails.SendParams = {
+            "from": "onboarding@resend.dev",
+            "to": [email],
             "subject": "Verification Code",
             "html": f"Your verification code is: <strong>{code}</strong>",
         }
-        self._resend.Emails.send(**params)
+
+        self._resend.Emails.send(params)

@@ -1,11 +1,8 @@
 import json
-
 import redis
 from dotenv import load_dotenv
 from pathlib import Path
 import os
-from app.schemas.registration_dto import RegistrationDTO
-
 
 class CacheService:
     def __init__(self):
@@ -28,40 +25,33 @@ class CacheService:
         except Exception as e:
             raise e
 
-    def is_registration_pending(self, registration: RegistrationDTO) -> bool:
-        email_key = f"reg:data:{registration.email}"
-        username_key = f"reg:lock:user:{registration.username}"
+    def is_registration_pending(self, email: str) -> bool:
+        email_key = f"reg:email:{email}"
 
-        exists_count = self._client.exists(email_key, username_key)
+        exists_count = self._client.exists(email_key)
         return exists_count > 0
 
-    def delete_registration_from_pending(self, registration: RegistrationDTO) -> None:
-        email_key = f"reg:data:{registration.email}"
-        username_key = f"reg:lock:user:{registration.username}"
+    def delete_registration_from_pending(self, email: str) -> None:
+        email_key = f"reg:email:{email}"
 
-        raw_data = self._client.get(email_key)
+        if self._client.exists(email_key):
+            self._client.delete(email_key)
 
-        pipe = self._client.pipeline()
+    def create_pending_registration(self, email: str, code: int) -> None:
+        email_key = f"reg:email:{email}"
 
-        if raw_data:
-            old_data=json.loads(raw_data)
-            old_username = old_data.get("username")
-            pipe.delete(f"reg:lock:user:{old_username}")
+        if not self._client.exists(email_key):
+            self._client.setex(email_key, 120, code)
 
-        pipe.delete(email_key)
-        pipe.delete(username_key)
-        pipe.execute()
+    def provided_code_correct(self, email: str, code: int) -> bool:
+        email_key = f"reg:email:{email}"
 
-    def create_pending_registration(self, registration: RegistrationDTO, code: int) -> None:
-        data_key = f"reg:data:{registration.email}"
-        lock_key = f"reg:lock:user:{registration.username}"
+        if self._client.exists(email_key):
+            saved_code = self._client.get(email_key)
 
-        storage_data = registration.model_dump()
-        storage_data["code"] = code
+            if int(saved_code) == code:
+                self._client.delete(email_key)
+                return True
 
-        expiry = 60
+        return False
 
-        pipe = self._client.pipeline()
-        pipe.setex(data_key, expiry, json.dumps(storage_data))
-        pipe.setex(lock_key, expiry, "locked")
-        pipe.execute()
