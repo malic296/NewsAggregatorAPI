@@ -1,5 +1,5 @@
 from fastapi import Depends, APIRouter, Query
-from app.repositories import ArticleRepository, ChannelRepository
+from app.repositories import ArticleRepository, ChannelRepository, ConsumerRepository
 from app.services import DatabaseService
 from app.schemas import ArticleDTO
 
@@ -8,7 +8,8 @@ article_router = APIRouter()
 def get_database_service() -> DatabaseService:
     return DatabaseService(
         article_repository=ArticleRepository(),
-        channel_repository=ChannelRepository()
+        channel_repository=ChannelRepository(),
+        consumer_repository=ConsumerRepository()
     )
 
 @article_router.get("/articles", response_model=list[ArticleDTO])

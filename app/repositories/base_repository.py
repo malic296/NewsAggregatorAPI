@@ -12,7 +12,7 @@ class BaseRepository:
     _conn_string: Optional[str] = None
 
     @classmethod
-    def _get_conn_string(cls) -> str:
+    def _read_env_vars(cls) -> None:
         if not cls._conn_string:
             try:
                 load_dotenv(Path(__file__).parent.parent.parent / ".env")
@@ -29,8 +29,6 @@ class BaseRepository:
             except KeyError as e:
                 raise e
 
-        return cls._conn_string
-
     @classmethod
     def _close_pool(cls) -> None:
         if cls._pool:
@@ -40,10 +38,10 @@ class BaseRepository:
     @classmethod
     def _get_pool(cls) -> ConnectionPool:
         if not cls._pool:
+            cls._read_env_vars()
             try:
-                conn_string = cls._get_conn_string()
                 cls._pool = ConnectionPool(
-                    conninfo=conn_string,
+                    conninfo=cls._conn_string,
                     timeout=1.0,
                     open=True,
                     reconnect_failed=lambda pool: pool.close() if not cls._db_init else None
@@ -64,7 +62,11 @@ class BaseRepository:
         init_queries = [
             "CREATE TABLE IF NOT EXISTS channel ( id SERIAL PRIMARY KEY, title TEXT, link TEXT UNIQUE );",
             "CREATE TABLE IF NOT EXISTS article ( id SERIAL PRIMARY KEY, title TEXT, link TEXT UNIQUE, description TEXT, pub_date TIMESTAMPTZ, channel_id INTEGER REFERENCES channel(id) );",
-            "CREATE TABLE IF NOT EXISTS logging ( id SERIAL PRIMARY KEY, timestamp TIMESTAMPTZ, status TEXT, module TEXT, method TEXT, message TEXT );"
+            "CREATE TABLE IF NOT EXISTS logging ( id SERIAL PRIMARY KEY, timestamp TIMESTAMPTZ, status TEXT, module TEXT, method TEXT, message TEXT );",
+            "CREATE TABLE IF NOT EXISTS password (id SERIAL PRIMARY KEY, hash TEXT NOT NULL);",
+            "CREATE TABLE IF NOT EXISTS consumer (id SERIAL PRIMARY KEY, username TEXT NOT NULL, email TEXT NOT NULL, password_id integer REFERENCES password(id) ON DELETE CASCADE);",
+            "CREATE TABLE IF NOT EXISTS likes (id SERIAL PRIMARY KEY, consumer_id integer REFERENCES consumer(id) ON DELETE CASCADE, article_id integer REFERENCES article(id) ON DELETE CASCADE, UNIQUE (consumer_id, article_id));"
+
         ]
 
         pool = cls._get_pool()
