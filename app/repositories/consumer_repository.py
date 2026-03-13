@@ -28,13 +28,18 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
         result = self._execute(query, params)
         password_id = result[0]["id"]
 
-        query = "INSERT INTO consumer(username, email, password_id) VALUES (%s, %s, %s) RETURNING *"
+        query = "INSERT INTO consumer(username, email, password_id) VALUES (%s, %s, %s) RETURNING id"
         params = (registration.username, registration.email, password_id)
+        result = self._execute(query, params)
+        consumer_id = result[0]["id"]
+
+        query = "SELECT c.id AS id, c.username AS username, c.email AS email, p.hash AS password FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.id = %s"
+        params = (consumer_id,)
         result = self._execute(query, params)
         return Consumer(**result[0])
 
     def get_consumer_by_email(self, email: str) -> Optional[Consumer]:
-        query = "SELECT c.id, c.username, c.email, p.password FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.email = %s"
+        query = "SELECT c.id AS id, c.username AS username, c.email AS email, p.hash AS password FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.email = %s"
         params = (email,)
         result = self._execute(query, params)
         if result:
@@ -43,7 +48,7 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
         return None
 
     def get_consumer_by_username(self, username: str) -> Optional[Consumer]:
-        query = "SELECT c.id, c.username, c.email, p.password FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.username = %s"
+        query = "SELECT c.id AS id, c.username AS username, c.email AS email, p.hash AS password FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.username = %s"
         params = (username,)
         result = self._execute(query, params)
         if result:

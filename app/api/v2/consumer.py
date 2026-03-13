@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
+from app.dependencies.auth import get_current_user
 from app.models.consumer import Consumer
 from app.models.enums.already_exists import AlreadyExistsEnum
+from app.schemas.consumer_dto import ConsumerDTO
 from app.schemas.registration_dto import RegistrationDTO
 from app.models.service_container import ServiceContainer
 import random
@@ -39,7 +41,7 @@ def verify_email(email: str, code:int,  services: ServiceContainer = Depends(get
         consumer: Consumer = services.db.register_consumer(registration)
         token = services.security.create_access_token(
             {
-                "usr": consumer.username,
+                "username": consumer.username,
                 "email": consumer.email
             }
         )
@@ -67,15 +69,19 @@ def login(login_request: LoginDTO, services: ServiceContainer = Depends(get_serv
 
     token = services.security.create_access_token(
         {
-            "usr": consumer.username,
+            "username": consumer.username,
             "email": consumer.email
         }
     )
     return {
-        "message": "Email verified",
+        "message": "Login successful",
         "token": token,
         "token_type": "Bearer"
     }
+
+@consumer_router.post("/get_currently_logged_user", response_model=ConsumerDTO)
+def get_currently_logged_user(current_user = Depends(get_current_user)):
+    return ConsumerDTO(**current_user)
 
 
 
