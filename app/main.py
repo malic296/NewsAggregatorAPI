@@ -8,9 +8,9 @@ from app.api.v2.consumer import consumer_router
 
 app = FastAPI()
 
-app.include_router(article_router_v1, prefix="/v1")
-app.include_router(channel_router_v1, prefix="/v1")
-
 app.include_router(article_router, prefix="/latest")
 app.include_router(channel_router, prefix="/latest")
 app.include_router(consumer_router, prefix="/latest")
+
+app.include_router(article_router_v1, prefix="/v1", tags=["obsolete"])
+app.include_router(channel_router_v1, prefix="/v1", tags=["obsolete"])

@@ -1,37 +1,26 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from app.models.consumer import Consumer
 from app.models.enums.already_exists import AlreadyExistsEnum
-from app.repositories import ArticleRepository, ChannelRepository, ConsumerRepository
-from app.services import DatabaseService
 from app.schemas.registration_dto import RegistrationDTO
-from app.services.cache_service import CacheService
-from app.services.email_service import EmailService
-from app.services.security_service import SecurityService
 from app.models.service_container import ServiceContainer
 import random
+from app.dependencies.service_container import get_service_container
+from app.schemas.login_dto import LoginDTO
 
-consumer_router = APIRouter()
+consumer_router = APIRouter(
+    prefix="/consumers",
+    tags=["consumers"]
+)
 
-def get_service_container() -> ServiceContainer:
-    return ServiceContainer(
-        db=DatabaseService(
-            article_repository=ArticleRepository(),
-            channel_repository=ChannelRepository(),
-            consumer_repository=ConsumerRepository()
-        ),
-        security=SecurityService(),
-        cache=CacheService(),
-        email=EmailService()
-    )
-
-@consumer_router.post("/consumers/register/request_new_registration")
+@consumer_router.post("/register/request_new_registration")
 def request_new_registration(registration: RegistrationDTO, services: ServiceContainer = Depends(get_service_container)):
     registration.password = services.security.get_password_hash(registration.password)
     is_used_by = services.db.is_username_or_email_used(username=registration.username, email=registration.email)
     match is_used_by:
         case AlreadyExistsEnum.EMAIL:
-            raise Exception("Email already used")
+            raise HTTPException(status_code=400, detail="Email already used")
         case AlreadyExistsEnum.USERNAME:
-            raise Exception("Username already used")
+            raise HTTPException(status_code=400, detail="Username already used")
         case _:
             is_pending = services.cache.is_registration_pending(registration)
             if is_pending:
@@ -43,11 +32,50 @@ def request_new_registration(registration: RegistrationDTO, services: ServiceCon
 
     return {"message" : "Registration created"}
 
-@consumer_router.post("/consumers/register/verify_email_registration")
-def verify_email_registration(email: str, code:int,  services: ServiceContainer = Depends(get_service_container)):
+@consumer_router.post("/register/verify_email")
+def verify_email(email: str, code:int,  services: ServiceContainer = Depends(get_service_container)):
     registration = services.cache.provided_code_correct(email, code)
     if registration:
-        services.db.register_user(registration)
-        return {"message" : "Email verified"}
+        consumer: Consumer = services.db.register_consumer(registration)
+        token = services.security.create_access_token(
+            {
+                "usr": consumer.username,
+                "email": consumer.email
+            }
+        )
+        return {
+            "message" : "Email verified",
+            "token": token,
+            "token_type": "Bearer"
+        }
     else:
-        raise Exception("Email not yet registered or code is incorrect")
+        raise HTTPException(status_code=400, detail="Invalid or expired code")
+
+@consumer_router.post("/login")
+def login(login_request: LoginDTO, services: ServiceContainer = Depends(get_service_container)):
+    if login_request.email:
+        consumer: Consumer = services.db.get_consumer_by_email(login_request.email)
+
+    elif login_request.username:
+        consumer: Consumer = services.db.get_consumer_by_username(login_request.username)
+
+    if not consumer:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not services.security.verify_password(consumer.password, login_request.password):
+        raise HTTPException(status_code=400, detail="Invalid password for provided email or username.")
+
+    token = services.security.create_access_token(
+        {
+            "usr": consumer.username,
+            "email": consumer.email
+        }
+    )
+    return {
+        "message": "Email verified",
+        "token": token,
+        "token_type": "Bearer"
+    }
+
+
+
