@@ -90,7 +90,10 @@ class BaseRepository:
                 with conn.cursor(row_factory=dict_row) as cur:
                     cur.execute(query, params or ())
 
-                    return cur.fetchall()
+                    if cur.description is not None:
+                        return cur.fetchall()
+
+                    return []
 
         except Exception as e:
             raise e

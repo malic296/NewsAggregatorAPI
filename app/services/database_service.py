@@ -4,6 +4,7 @@ from app.models import Article
 from app.models.enums.already_exists import AlreadyExistsEnum
 from app.repositories import ChannelRepository, ConsumerRepository
 from app.repositories import ArticleRepository
+from app.schemas.registration_dto import RegistrationDTO
 
 class DatabaseService:
     def __init__(self, channel_repository: ChannelRepository, article_repository: ArticleRepository, consumer_repository: ConsumerRepository):
@@ -21,3 +22,6 @@ class DatabaseService:
 
     def is_username_or_email_used(self, username, email) -> Optional[AlreadyExistsEnum]:
         return self.consumers.is_username_or_email_used(username=username, email=email)
+
+    def register_user(self, registration: RegistrationDTO) -> None:
+        return self.consumers.register_user(registration)

@@ -16,7 +16,9 @@ class EmailService:
             raise e
 
     def send_verification_code(self, email: str, code: int) -> None:
+        #WILL NEED TO PROPERLY SET LATER ON
         return
+
         params: resend.Emails.SendParams = {
             "from": "onboarding@resend.dev",
             "to": [email],

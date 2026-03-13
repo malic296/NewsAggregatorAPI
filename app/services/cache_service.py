@@ -1,11 +1,15 @@
-import json
+from typing import Optional
+
+from app.schemas.registration_dto import RegistrationDTO
 import redis
 from dotenv import load_dotenv
 from pathlib import Path
 import os
+import json
 
 class CacheService:
     def __init__(self):
+        self._reg_key_prefix = "reg:"
 
         try:
             load_dotenv(Path(__file__).parent.parent.parent / ".env")
@@ -25,33 +29,40 @@ class CacheService:
         except Exception as e:
             raise e
 
-    def is_registration_pending(self, email: str) -> bool:
-        email_key = f"reg:email:{email}"
+    def is_registration_pending(self, registration: RegistrationDTO) -> bool:
+        email_key = self._reg_key_prefix + registration.email
 
         exists_count = self._client.exists(email_key)
         return exists_count > 0
 
-    def delete_registration_from_pending(self, email: str) -> None:
-        email_key = f"reg:email:{email}"
+    def delete_registration_from_pending(self, registration: RegistrationDTO) -> None:
+        email_key = self._reg_key_prefix + registration.email
 
         if self._client.exists(email_key):
             self._client.delete(email_key)
 
-    def create_pending_registration(self, email: str, code: int) -> None:
-        email_key = f"reg:email:{email}"
+    def create_pending_registration(self, registration: RegistrationDTO, code: int) -> None:
+        email_key = self._reg_key_prefix + registration.email
 
         if not self._client.exists(email_key):
-            self._client.setex(email_key, 120, code)
+            dict_data = {
+                "code": code,
+                "data": registration.model_dump()
+            }
 
-    def provided_code_correct(self, email: str, code: int) -> bool:
-        email_key = f"reg:email:{email}"
+            self._client.setex(email_key, 120, json.dumps(dict_data))
+
+
+    def provided_code_correct(self, email: str, code: int) -> Optional[RegistrationDTO]:
+        email_key = self._reg_key_prefix + email
 
         if self._client.exists(email_key):
-            saved_code = self._client.get(email_key)
+            saved_data = self._client.get(email_key)
+            json_data = json.loads(saved_data)
 
-            if int(saved_code) == code:
+            if int(json_data["code"]) == code:
                 self._client.delete(email_key)
-                return True
+                return RegistrationDTO(**json_data["data"])
 
-        return False
+        return None
 
