@@ -4,7 +4,7 @@ from typing import Annotated
 from app.dependencies.service_container import get_service_container
 from app.models.service_container import ServiceContainer
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="consumers/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/latest/consumers/login")
 
 def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], services: ServiceContainer = Depends(get_service_container)):
     payload = services.security.decode_access_token(token)

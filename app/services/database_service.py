@@ -33,6 +33,9 @@ class DatabaseService:
     def get_consumer_by_username(self, username: str) -> Optional[Consumer]:
         return self.consumers.get_consumer_by_username(username)
     
+    def get_consumer_by_creadential(self, credential: str ) -> Optional[Consumer]:
+        return self.consumers.get_consumer_by_creadential(credential)
+    
     def like_article(self, article_id: int, consumer_id: int) -> bool:
         return self.likes.like_article(article_id=article_id, consumer_id=consumer_id)
 

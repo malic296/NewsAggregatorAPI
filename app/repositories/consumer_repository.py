@@ -69,3 +69,15 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
             return Consumer(**result.data[0])
 
         return None
+    
+    def get_consumer_by_creadential(self, credential: str) -> Optional[Consumer]:
+        query = "SELECT c.id AS id, c.username AS username, c.email AS email, p.hash AS password FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.username = %s OR c.email = %s"
+        params = (credential, credential, )
+
+        result = self._execute(query, params)
+        if not result.success: 
+            raise Exception(f"Failed getting consumer from DB by credential {credential} because: {result.error_message}")
+        if result.data:
+            return Consumer(**result.data[0])
+
+        return None

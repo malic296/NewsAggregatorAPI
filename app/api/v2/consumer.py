@@ -8,6 +8,7 @@ from app.models.service_container import ServiceContainer
 import random
 from app.dependencies.service_container import get_service_container
 from app.schemas.login_dto import LoginDTO
+from fastapi.security import OAuth2PasswordRequestForm
 
 consumer_router = APIRouter(
     prefix="/consumers",
@@ -54,18 +55,13 @@ def verify_email(email: str, code:int,  services: ServiceContainer = Depends(get
         raise HTTPException(status_code=400, detail="Invalid or expired code")
 
 @consumer_router.post("/login")
-def login(login_request: LoginDTO, services: ServiceContainer = Depends(get_service_container)):
-    if login_request.email:
-        consumer: Consumer = services.db.get_consumer_by_email(login_request.email)
-
-    elif login_request.username:
-        consumer: Consumer = services.db.get_consumer_by_username(login_request.username)
-
+def login(login: OAuth2PasswordRequestForm = Depends(), services: ServiceContainer = Depends(get_service_container)):
+    consumer: Consumer = services.db.get_consumer_by_username(login.username)
     if not consumer:
-        raise HTTPException(status_code=404, detail="User not found")
+        consumer: Consumer = services.db.get_consumer_by_email(login.username)
 
-    if not services.security.verify_password(consumer.password, login_request.password):
-        raise HTTPException(status_code=400, detail="Invalid password for provided email or username.")
+    if not consumer or not services.security.verify_password(consumer.password, login.password):
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
 
     token = services.security.create_access_token(
         {
@@ -74,14 +70,13 @@ def login(login_request: LoginDTO, services: ServiceContainer = Depends(get_serv
         }
     )
     return {
-        "message": "Login successful",
-        "token": token,
+        "access_token": token,
         "token_type": "Bearer"
     }
 
-@consumer_router.post("/get_currently_logged_user", response_model=ConsumerDTO)
-def get_currently_logged_user(current_user = Depends(get_current_user)):
-    return ConsumerDTO(**current_user)
+@consumer_router.post("/get_currently_logged_consumer", response_model=ConsumerDTO)
+def get_currently_logged_consumer(current_user = Depends(get_current_user), services: ServiceContainer = Depends(get_service_container)):
+    return services.db.get_consumer_by_creadential(current_user["username"])
 
 
 
