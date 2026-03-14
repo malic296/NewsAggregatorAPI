@@ -1,5 +1,4 @@
 import os
-import resend
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -8,8 +7,6 @@ class EmailService:
         try:
             load_dotenv(Path(__file__).parent.parent.parent / '.env')
             api_key = os.environ['RESEND_API_KEY']
-            resend.api_key = api_key
-            self._resend = resend
         except KeyError as e:
             raise e
         except Exception as e:

@@ -1,5 +1,4 @@
 from typing import Optional
-
 from app.models import Article
 from .base_repository import BaseRepository
 from app.interfaces.article_interface import ArticleInterface
@@ -15,9 +14,10 @@ class ArticleRepository(BaseRepository, ArticleInterface):
             query = "SELECT * FROM article WHERE channel_id = ANY(%s) AND pub_date >= %s ORDER BY pub_date DESC"
             params = (channel_ids, datetime.now(timezone.utc) - timedelta(hours=hours),)
         db_result = self._execute(query, params)
+        if not db_result.success:
+            raise Exception(f"Failed getting articles because: {e}")
 
         try:
-            articles: list[Article] = [Article(**article) for article in db_result]
+            return [Article(**article) for article in db_result.data]
         except Exception as e:
             raise e
-        return articles

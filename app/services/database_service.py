@@ -2,16 +2,16 @@ from typing import Optional
 from app.models import Channel
 from app.models import Article
 from app.models.enums.already_exists import AlreadyExistsEnum
-from app.repositories import ChannelRepository, ConsumerRepository
-from app.repositories import ArticleRepository
+from app.repositories import ChannelRepository, ConsumerRepository, ArticleRepository, LikesRepository
 from app.models.consumer import Consumer
 from app.schemas.registration_dto import RegistrationDTO
 
 class DatabaseService:
-    def __init__(self, channel_repository: ChannelRepository, article_repository: ArticleRepository, consumer_repository: ConsumerRepository):
-        self.channels = channel_repository
-        self.articles = article_repository
-        self.consumers = consumer_repository
+    def __init__(self):
+        self.articles: ArticleRepository = ArticleRepository()
+        self.channels: ChannelRepository = ChannelRepository()
+        self.consumers: ConsumerRepository = ConsumerRepository()
+        self.likes: LikesRepository = LikesRepository()
 
     def get_articles(self, hours: int = 1, channel_ids: Optional[list[int]] = None) -> list[Article]:
         if hours < 1:
@@ -32,4 +32,7 @@ class DatabaseService:
 
     def get_consumer_by_username(self, username: str) -> Optional[Consumer]:
         return self.consumers.get_consumer_by_username(username)
+    
+    def like_article(self, article_id: int, consumer_id: int) -> bool:
+        return self.likes.like_article(article_id=article_id, consumer_id=consumer_id)
 

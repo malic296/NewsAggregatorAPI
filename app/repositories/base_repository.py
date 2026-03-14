@@ -5,6 +5,7 @@ from psycopg_pool import ConnectionPool
 from typing import Optional
 from dotenv import load_dotenv
 from pathlib import Path
+from app.models.db_result import DBResult
 
 class BaseRepository:
     _db_init: bool = False
@@ -82,18 +83,27 @@ class BaseRepository:
         except Exception as e:
             raise e
 
-    def _execute(self, query: str, params: Optional[tuple] = None) -> list[dict]:
+    def _execute(self, query: str, params: Optional[tuple] = None) -> DBResult:
         pool = self._get_pool()
         self._setup_db()
         try:
             with pool.connection() as conn:
                 with conn.cursor(row_factory=dict_row) as cur:
                     cur.execute(query, params or ())
+                    data = []
 
                     if cur.description is not None:
-                        return cur.fetchall()
+                        data = cur.fetchall()
 
-                    return []
+                    count = cur.rowcount
+                    return DBResult(
+                        success=True,
+                        data=data,
+                        row_count=count
+                    )
 
         except Exception as e:
-            raise e
+            return DBResult(
+                success = False,
+                error_message=e
+            )

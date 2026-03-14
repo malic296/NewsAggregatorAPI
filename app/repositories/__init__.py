@@ -1,3 +1,4 @@
 from .channel_repository import ChannelRepository
 from .article_repository import ArticleRepository
 from .consumer_repository import ConsumerRepository
+from .likes_repository import LikesRepository

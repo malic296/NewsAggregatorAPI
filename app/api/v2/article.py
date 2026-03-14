@@ -6,8 +6,8 @@ from app.dependencies.auth import get_current_user
 
 article_router = APIRouter(
     prefix = "/articles",
-    tags = ["articles"],
-    dependencies=[Depends(get_current_user)]
+    tags = ["articles"]
+    #dependencies=[Depends(get_current_user)]
 )
 
 @article_router.get("/", response_model=list[ArticleDTO])
