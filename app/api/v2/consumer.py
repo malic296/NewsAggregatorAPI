@@ -46,7 +46,7 @@ def verify_email(email: str, code:int,  services: ServiceContainer = Depends(get
         consumer: Consumer = services.db.register_consumer(registration)
         token = services.security.create_access_token(
             {
-                "id": consumer.id,
+                "uuid": consumer.uuid,
                 "username": consumer.username,
                 "email": consumer.email
             }
@@ -69,7 +69,7 @@ def login(login: OAuth2PasswordRequestForm = Depends(), services: ServiceContain
 
     token = services.security.create_access_token(
         {
-            "id": consumer.id,
+            "uuid": consumer.uuid,
             "username": consumer.username,
             "email": consumer.email
         }
