@@ -32,7 +32,7 @@ class SecurityService:
 
 
 
-    def create_access_token(self, data: dict):
+    def create_access_token(self, data: dict) -> str:
         to_encode = data.copy()
         expire = datetime.now(timezone.utc) + timedelta(minutes=30)
         to_encode.update({"exp": expire})

@@ -7,7 +7,7 @@ from app.schemas.registration_dto import RegistrationDTO
 from app.models.service_container import ServiceContainer
 import random
 from app.dependencies.service_container import get_service_container
-from app.schemas.login_dto import LoginDTO
+from app.schemas import LoginDTO, ResponseDTO
 from fastapi.security import OAuth2PasswordRequestForm
 
 consumer_router = APIRouter(
@@ -15,7 +15,7 @@ consumer_router = APIRouter(
     tags=["consumers"]
 )
 
-@consumer_router.post("/register/request_new_registration")
+@consumer_router.post("/register/request_new_registration", response_model=ResponseDTO[None])
 def request_new_registration(registration: RegistrationDTO, services: ServiceContainer = Depends(get_service_container)):
     registration.password = services.security.get_password_hash(registration.password)
     is_used_by = services.db.is_username_or_email_used(username=registration.username, email=registration.email)
@@ -33,7 +33,11 @@ def request_new_registration(registration: RegistrationDTO, services: ServiceCon
             services.email.send_verification_code(registration.email, code)
             services.cache.create_pending_registration(registration, code)
 
-    return {"message" : "Registration created"}
+    return ResponseDTO(
+        success=True,
+        message="New pending registration created.",
+        status_code=200
+    )
 
 @consumer_router.post("/register/verify_email")
 def verify_email(email: str, code:int,  services: ServiceContainer = Depends(get_service_container)):
@@ -42,13 +46,13 @@ def verify_email(email: str, code:int,  services: ServiceContainer = Depends(get
         consumer: Consumer = services.db.register_consumer(registration)
         token = services.security.create_access_token(
             {
+                "id": consumer.id,
                 "username": consumer.username,
                 "email": consumer.email
             }
         )
         return {
-            "message" : "Email verified",
-            "token": token,
+            "access_token": token,
             "token_type": "Bearer"
         }
     else:
@@ -65,6 +69,7 @@ def login(login: OAuth2PasswordRequestForm = Depends(), services: ServiceContain
 
     token = services.security.create_access_token(
         {
+            "id": consumer.id,
             "username": consumer.username,
             "email": consumer.email
         }
@@ -74,9 +79,18 @@ def login(login: OAuth2PasswordRequestForm = Depends(), services: ServiceContain
         "token_type": "Bearer"
     }
 
-@consumer_router.post("/get_currently_logged_consumer", response_model=ConsumerDTO)
+@consumer_router.post("/get_currently_logged_consumer", response_model=ResponseDTO[ConsumerDTO])
 def get_currently_logged_consumer(current_user = Depends(get_current_user), services: ServiceContainer = Depends(get_service_container)):
-    return services.db.get_consumer_by_creadential(current_user["username"])
+    consumer = services.db.get_consumer_by_creadential(current_user["username"])
+    if not consumer:
+        raise Exception("User is authorized but cannot get currently logged user.")
+    
+    return ResponseDTO(
+        status_code=200,
+        success=True,
+        message="Current user fetched successful.",
+        data = consumer
+    )
 
 
 
