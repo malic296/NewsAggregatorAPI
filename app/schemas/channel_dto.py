@@ -3,6 +3,6 @@ from pydantic import BaseModel
 
 @dataclass
 class ChannelDTO(BaseModel):
-    id: int
+    uuid: str
     title: str
     link: str

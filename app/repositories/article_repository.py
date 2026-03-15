@@ -21,3 +21,17 @@ class ArticleRepository(BaseRepository, ArticleInterface):
             return [Article(**article) for article in db_result.data]
         except Exception as e:
             raise e
+        
+    def get_article_by_uuid(self, article_uuid: int) -> Optional[Article]:
+    
+        query = "SELECT * FROM article WHERE uuid = %s"
+        params = (article_uuid, )
+
+        db_result = self._execute(query, params)
+        if not db_result.success:
+            raise Exception(f"Failed getting articles because: {e}")
+
+        try:
+            return Article(**db_result.data)
+        except Exception as e:
+            raise e

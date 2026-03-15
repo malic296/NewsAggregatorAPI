@@ -8,8 +8,8 @@ like_router = APIRouter(
     )
 
 @like_router.post("/like_article")
-def like_article(article_id: int, user_id: int, services = Depends(get_service_container)):
+def like_article(article_uuid: int, user_uuid: int, services = Depends(get_service_container)):
     try:
-        return services.db.like_article(article_id, user_id)
+        return services.db.like_article(article_uuid, user_uuid)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Liking article failed due to: {e}")

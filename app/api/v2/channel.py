@@ -12,7 +12,7 @@ channel_router = APIRouter(
 )
 
 @channel_router.get("/", response_model=ResponseDTO[list[ChannelDTO]])
-def get_channels(services: ServiceContainer = Depends(get_service_container)):
+def get_available_channels(services: ServiceContainer = Depends(get_service_container)):
     channels = services.db.get_channels()
     return ResponseDTO(
         status_code=200,

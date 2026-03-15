@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
 class ConsumerDTO(BaseModel):
-    id: int
+    uuid: str
     username: str
     email: str

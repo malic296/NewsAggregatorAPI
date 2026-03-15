@@ -36,6 +36,14 @@ class DatabaseService:
     def get_consumer_by_creadential(self, credential: str ) -> Optional[Consumer]:
         return self.consumers.get_consumer_by_creadential(credential)
     
-    def like_article(self, article_id: int, consumer_id: int) -> bool:
-        return self.likes.like_article(article_id=article_id, consumer_id=consumer_id)
+    def like_article(self, article_uuid: int, consumer_uuid: int) -> bool:
+        article = self.articles.get_article_by_uuid(article_uuid)
+        if not article:
+            raise Exception(f"Article with public ID {article_uuid} not found.")
+        
+        consumer = self.consumers.get_consumer_by_uuid(consumer_uuid)
+        if not consumer:
+            raise Exception(f"Consumer with public ID {consumer_uuid} not found.")
+        
+        return self.likes.like_article(article_id=article.id, consumer_id=consumer.id)
 

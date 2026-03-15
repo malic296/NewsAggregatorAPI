@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 @dataclass
 class ArticleDTO(BaseModel):
-    id: int
+    uuid: str
     title: str
     link: str
     description: str

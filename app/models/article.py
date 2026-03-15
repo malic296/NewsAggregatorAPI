@@ -4,6 +4,7 @@ from datetime import datetime
 @dataclass
 class Article:
     id: int
+    uuid: str
     title: str
     link: str
     description: str
