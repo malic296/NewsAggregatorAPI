@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
-from app.models.enums.already_exists import AlreadyExistsEnum
+from app.models import AlreadyExistsEnum, Consumer
 from app.schemas import RegistrationDTO
-from app.models import Consumer
 
 class ConsumerInterface(ABC):
     @abstractmethod

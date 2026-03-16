@@ -1,9 +1,8 @@
 from typing import Optional
-from app.models import Article
 from .base_repository import BaseRepository
 from app.interfaces.article_interface import ArticleInterface
 from datetime import datetime, timezone, timedelta
-from app.models.consumer import Consumer
+from app.models import Consumer, Article
 
 class ArticleRepository(BaseRepository, ArticleInterface):
     def get_articles(self, consumer: Consumer, channel_ids: Optional[list[int]] = None, hours: int = 1) -> list[Article]:

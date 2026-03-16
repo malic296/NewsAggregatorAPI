@@ -1,10 +1,8 @@
 from fastapi import Depends, APIRouter, Query
-from app.models.service_container import ServiceContainer
-from app.schemas import ArticleDTO
+from models import ServiceContainer, Article
+from app.schemas import ArticleDTO, ResponseDTO
 from app.dependencies.service_container import get_service_container
 from app.dependencies.auth import get_current_user
-from app.schemas import ResponseDTO
-from app.models.article import Article
 
 article_router = APIRouter(
     prefix = "/articles",

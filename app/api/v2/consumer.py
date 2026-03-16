@@ -1,14 +1,10 @@
+import random
 from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies.auth import get_current_user
-from app.models.consumer import Consumer
-from app.models.enums.already_exists import AlreadyExistsEnum
-from app.schemas.consumer_dto import ConsumerDTO
-from app.schemas.registration_dto import RegistrationDTO
-from app.models.service_container import ServiceContainer
-import random
 from app.dependencies.service_container import get_service_container
-from app.schemas import ResponseDTO
 from fastapi.security import OAuth2PasswordRequestForm
+from app.models import ServiceContainer, AlreadyExistsEnum, Consumer
+from app.schemas import RegistrationDTO, ResponseDTO, ConsumerDTO
 
 consumer_router = APIRouter(
     prefix="/consumers",

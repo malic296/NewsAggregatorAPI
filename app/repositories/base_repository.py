@@ -5,7 +5,7 @@ from psycopg_pool import ConnectionPool
 from typing import Optional
 from dotenv import load_dotenv
 from pathlib import Path
-from app.models.db_result import DBResult
+from app.models import DBResult
 
 class BaseRepository:
     _db_init: bool = False

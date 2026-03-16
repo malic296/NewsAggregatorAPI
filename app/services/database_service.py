@@ -1,10 +1,7 @@
 from typing import Optional
-from app.models import Channel
-from app.models import Article
-from app.models.enums.already_exists import AlreadyExistsEnum
+from app.models import AlreadyExistsEnum, Consumer, Channel, Article
 from app.repositories import ChannelRepository, ConsumerRepository, ArticleRepository, LikesRepository
-from app.models.consumer import Consumer
-from app.schemas.registration_dto import RegistrationDTO
+from app.schemas import RegistrationDTO
 
 class DatabaseService:
     def __init__(self):

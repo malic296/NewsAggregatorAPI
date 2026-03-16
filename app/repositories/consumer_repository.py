@@ -1,9 +1,8 @@
 from typing import Optional
 from .base_repository import BaseRepository
-from app.interfaces.consumer_interface import ConsumerInterface
-from app.models.enums.already_exists import AlreadyExistsEnum
-from ..models.consumer import Consumer
-from ..schemas.registration_dto import RegistrationDTO
+from app.interfaces import ConsumerInterface
+from app.models import AlreadyExistsEnum, Consumer
+from app.schemas import RegistrationDTO
 import uuid
 
 class ConsumerRepository(BaseRepository, ConsumerInterface):

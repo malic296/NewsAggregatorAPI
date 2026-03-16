@@ -1,6 +1,6 @@
-from app.models.channel import Channel
+from app.models import Channel
 from .base_repository import BaseRepository
-from app.interfaces.channel_interface import ChannelInterface
+from app.interfaces import ChannelInterface
 
 class ChannelRepository(BaseRepository, ChannelInterface):
     def get_channels(self) -> list[Channel]:

@@ -1,6 +1,6 @@
 from typing import Optional
 from app.models import Channel
-from app.schemas.registration_dto import RegistrationDTO
+from app.schemas import RegistrationDTO
 import redis
 from dotenv import load_dotenv
 from pathlib import Path

@@ -1,10 +1,8 @@
 from fastapi import Depends, APIRouter
-from app.models.service_container import ServiceContainer
-from app.schemas import ChannelDTO
 from app.dependencies.auth import get_current_user
 from app.dependencies.service_container import get_service_container
-from app.schemas import ResponseDTO
-from app.models import Channel
+from app.models import Channel, ServiceContainer
+from app.schemas import ResponseDTO, ChannelDTO
 
 channel_router = APIRouter(
     prefix="/channels",
