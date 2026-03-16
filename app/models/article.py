@@ -9,4 +9,6 @@ class Article:
     link: str
     description: str
     pub_date: datetime
-    channel_id: int
+    channel_link: str
+    likes: int
+    liked_by_user: bool = False

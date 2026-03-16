@@ -6,8 +6,7 @@ class LikesRepository(BaseRepository, LikesInterface):
         query = "SELECT * FROM likes WHERE article_id = %s and consumer_id = %s"
         params = (article_id, consumer_id,)
         result = self._execute(query, params)
-        if not result.data:
-            raise Exception("No records found. Invalid Consumer or Article IDs.")
+
         if not result.success:
             raise Exception(f"Failed selecting from likes table because: {result.error_message}")
         if result.data:

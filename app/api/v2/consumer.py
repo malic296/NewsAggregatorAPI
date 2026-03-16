@@ -81,7 +81,7 @@ def login(login: OAuth2PasswordRequestForm = Depends(), services: ServiceContain
 
 @consumer_router.post("/get_currently_logged_consumer", response_model=ResponseDTO[ConsumerDTO])
 def get_currently_logged_consumer(current_user = Depends(get_current_user), services: ServiceContainer = Depends(get_service_container)):
-    consumer = services.db.get_consumer_by_creadential(current_user["username"])
+    consumer = services.db.get_consumer_by_credential(current_user["username"])
     if not consumer:
         raise Exception("User is authorized but cannot get currently logged user.")
     

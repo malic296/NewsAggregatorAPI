@@ -70,7 +70,7 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
 
         return None
     
-    def get_consumer_by_creadential(self, credential: str) -> Optional[Consumer]:
+    def get_consumer_by_credential(self, credential: str) -> Optional[Consumer]:
         query = "SELECT c.id AS id, c.uuid AS uuid, c.username AS username, c.email AS email, p.hash AS password FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.username = %s OR c.email = %s"
         params = (credential, credential, )
 
