@@ -5,7 +5,6 @@ from app.dependencies.auth import get_current_user
 like_router = APIRouter(
     prefix="/likes",
     tags=["likes"]
-    #dependencies for auth
     )
 
 @like_router.post("/like_article")
