@@ -4,42 +4,55 @@ from app.repositories import ChannelRepository, ConsumerRepository, ArticleRepos
 from app.schemas import RegistrationDTO
 
 class DatabaseService:
-    def __init__(self):
-        self.articles: ArticleRepository = ArticleRepository()
-        self.channels: ChannelRepository = ChannelRepository()
-        self.consumers: ConsumerRepository = ConsumerRepository()
-        self.likes: LikesRepository = LikesRepository()
+    def __init__(self, articles: ArticleRepository, channels: ChannelRepository, consumers: ConsumerRepository, likes: LikesRepository):
+        self.articles= articles
+        self.channels= channels
+        self.consumers= consumers
+        self.likes= likes
 
     def get_articles(self, consumer: Consumer, hours: int = 1, channel_ids: Optional[list[int]] = None) -> list[Article]:
-        if hours < 1:
-            raise Exception('hours param must be same or greater than 1')
         return self.articles.get_articles(consumer=consumer, channel_ids=channel_ids, hours=hours)
 
     def get_channels(self) -> list[Channel]:
-        return self.channels.get_channels()
+        channels: list[Channel] = self.channels.get_channels()
+        if not channels:
+            raise Exception("Channels list cannot be empty.")
+        
+        return channels
 
     def is_username_or_email_used(self, username, email) -> Optional[AlreadyExistsEnum]:
-        return self.consumers.is_username_or_email_used(username=username, email=email)
+        consumer: Consumer = self.consumers.get_consumer_by_username(username)
+        if consumer:
+            return AlreadyExistsEnum.USERNAME
+        
+        consumer: Consumer = self.consumers.get_consumer_by_email(email)
+        if consumer:
+            return AlreadyExistsEnum.EMAIL
+        
+        return None
 
     def register_consumer(self, registration: RegistrationDTO) -> Consumer:
         return self.consumers.register_consumer(registration)
-
-    def get_consumer_by_email(self, email: str) -> Optional[Consumer]:
-        return self.consumers.get_consumer_by_email(email)
-
-    def get_consumer_by_username(self, username: str) -> Optional[Consumer]:
-        return self.consumers.get_consumer_by_username(username)
     
-    def get_consumer_by_credential(self, credential: str ) -> Optional[Consumer]:
-        return self.consumers.get_consumer_by_credential(credential)
+    def get_consumer_by_credential(self, credential: str ) -> Consumer:
+        consumer = self.consumers.get_consumer_by_username(credential)
+        if not consumer:
+            consumer = self.consumers.get_consumer_by_email(credential)
+
+        if not consumer:
+            raise Exception("Consumer not found by provided credential.")
+        return consumer
     
     def get_consumers_hash(self, uuid: str) -> str:
-        return self.consumers.get_consumers_hash(uuid)
+        hash: str = self.consumers.get_consumers_hash(uuid)
+        if not hash:
+            raise Exception("No hash found for provided consumers UUID.")
+        
+        return hash
     
     def like_article(self, article_uuid: str, consumer_uuid: str) -> bool:
         try:
-            article_id = self.articles.get_article_by_uuid(article_uuid)
-            print(article_id)
+            article_id = self.articles.article_uuid_to_id(article_uuid)
         except Exception as e:
             raise e
         if not article_id:

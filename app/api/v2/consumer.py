@@ -56,14 +56,14 @@ def verify_email(email: str, code:int,  services: ServiceContainer = Depends(get
 
 @consumer_router.post("/login")
 def login(login: OAuth2PasswordRequestForm = Depends(), services: ServiceContainer = Depends(get_service_container)):
-    consumer: Consumer = services.db.get_consumer_by_username(login.username)
+    consumer: Consumer = services.db.get_consumer_by_credential(login.username)
     if not consumer:
-        consumer: Consumer = services.db.get_consumer_by_email(login.username)
+        raise HTTPException(status_code=400, detail="Incorrect login details.")
 
     saved_hash = services.db.get_consumers_hash(consumer.uuid)
 
-    if not consumer or not services.security.verify_password(saved_hash, login.password):
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    if not services.security.verify_password(saved_hash, login.password):
+        raise HTTPException(status_code=400, detail="Incorrect login details.")
 
     token = services.security.create_access_token(
         {
@@ -79,9 +79,7 @@ def login(login: OAuth2PasswordRequestForm = Depends(), services: ServiceContain
 
 @consumer_router.post("/get_currently_logged_consumer", response_model=ResponseDTO[ConsumerDTO])
 def get_currently_logged_consumer(current_user = Depends(get_current_user), services: ServiceContainer = Depends(get_service_container)):
-    consumer = services.db.get_consumer_by_credential(current_user["username"])
-    if not consumer:
-        raise Exception("User is authorized but cannot get currently logged user.")
+    consumer: Consumer = services.db.get_consumer_by_credential(current_user["username"])
     
     return ResponseDTO(
         status_code=200,

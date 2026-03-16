@@ -35,7 +35,7 @@ class ArticleRepository(BaseRepository, ArticleInterface):
         except Exception as e:
             raise e
         
-    def get_article_by_uuid(self, article_uuid: str) -> Optional[int]:
+    def article_uuid_to_id(self, article_uuid: str) -> Optional[int]:
         query = "SELECT id FROM article WHERE uuid = %s"
         db_result = self._execute(query, (article_uuid,))
 
