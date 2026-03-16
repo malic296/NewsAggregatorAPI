@@ -6,4 +6,3 @@ class Consumer:
     uuid: str
     username: str
     email: str
-    password: int

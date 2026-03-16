@@ -1,15 +1,17 @@
 from typing import Optional
-
+from app.models import Channel
 from app.schemas.registration_dto import RegistrationDTO
 import redis
 from dotenv import load_dotenv
 from pathlib import Path
 import os
 import json
+from dataclasses import asdict
 
 class CacheService:
     def __init__(self):
         self._reg_key_prefix = "reg:"
+        self._data_key_prefix = "data:"
 
         try:
             load_dotenv(Path(__file__).parent.parent.parent / ".env")
@@ -65,4 +67,23 @@ class CacheService:
                 return RegistrationDTO(**json_data["data"])
 
         return None
+    
+    
+    def set_available_channels(self, channels: list[Channel]) -> None:
+        channels_key = self._data_key_prefix + "available_channels"
+
+        self._client.setex(channels_key, 5, json.dumps([asdict(channel) for channel in channels]))
+
+    def get_available_channels(self) -> list[Channel]:
+        channels_key = self._data_key_prefix + "available_channels"
+
+        if self._client.exists(channels_key):
+            saved_data = self._client.get(channels_key)
+            json_data = json.loads(saved_data)
+
+            return [Channel(**channel) for channel in json_data]
+        
+        return []
+    
+
 

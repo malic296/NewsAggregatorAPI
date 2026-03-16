@@ -49,7 +49,7 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
         return Consumer(**result.data[0])
 
     def get_consumer_by_email(self, email: str) -> Optional[Consumer]:
-        query = "SELECT c.id AS id, c.uuid AS uuid, c.username AS username, c.email AS email, p.hash AS password FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.email = %s"
+        query = "SELECT c.id AS id, c.uuid AS uuid, c.username AS username, c.email AS email FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.email = %s"
         params = (email,)
         result = self._execute(query, params)
         if not result.success: 
@@ -60,7 +60,7 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
         return None
 
     def get_consumer_by_username(self, username: str) -> Optional[Consumer]:
-        query = "SELECT c.id AS id, c.uuid AS uuid, c.username AS username, c.email AS email, p.hash AS password FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.username = %s"
+        query = "SELECT c.id AS id, c.uuid AS uuid, c.username AS username, c.email AS email FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.username = %s"
         params = (username,)
         result = self._execute(query, params)
         if not result.success: 
@@ -71,7 +71,7 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
         return None
     
     def get_consumer_by_credential(self, credential: str) -> Optional[Consumer]:
-        query = "SELECT c.id AS id, c.uuid AS uuid, c.username AS username, c.email AS email, p.hash AS password FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.username = %s OR c.email = %s"
+        query = "SELECT c.id AS id, c.uuid AS uuid, c.username AS username, c.email AS email FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.username = %s OR c.email = %s"
         params = (credential, credential, )
 
         result = self._execute(query, params)
@@ -83,7 +83,7 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
         return None
     
     def get_consumer_by_uuid(self, consumer_uuid: str) -> Optional[Consumer]:
-        query = "SELECT c.id AS id, c.uuid AS uuid, c.username AS username, c.email AS email, p.hash AS password FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.uuid = %s"
+        query = "SELECT c.id AS id, c.uuid AS uuid, c.username AS username, c.email AS email FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.uuid = %s"
         params = (consumer_uuid, )
 
         result = self._execute(query, params)
@@ -91,5 +91,26 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
             raise Exception(f"Failed getting consumer from DB by public ID {consumer_uuid} because: {result.error_message}")
         if result.data:
             return Consumer(**result.data[0])
+
+        return None
+    
+    def get_consumers_hash(self, uuid: str) -> str:
+        query = """
+            SELECT p.hash AS password from 
+            consumer AS c 
+            JOIN 
+            password AS p 
+            ON
+            c.password_id = p.id
+            WHERE 
+            c.uuid = %s
+        """
+        params = (uuid, )
+
+        result = self._execute(query=query, params=params)
+        if not result.success: 
+            raise Exception(f"Failed getting saved hash from DB by users public ID {uuid} because: {result.error_message}")
+        if result.data:
+            return result.data[0]["password"]
 
         return None

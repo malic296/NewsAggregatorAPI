@@ -7,7 +7,7 @@ from app.schemas.registration_dto import RegistrationDTO
 from app.models.service_container import ServiceContainer
 import random
 from app.dependencies.service_container import get_service_container
-from app.schemas import LoginDTO, ResponseDTO
+from app.schemas import ResponseDTO
 from fastapi.security import OAuth2PasswordRequestForm
 
 consumer_router = APIRouter(
@@ -64,7 +64,9 @@ def login(login: OAuth2PasswordRequestForm = Depends(), services: ServiceContain
     if not consumer:
         consumer: Consumer = services.db.get_consumer_by_email(login.username)
 
-    if not consumer or not services.security.verify_password(consumer.password, login.password):
+    saved_hash = services.db.get_consumers_hash(consumer.uuid)
+
+    if not consumer or not services.security.verify_password(saved_hash, login.password):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 
     token = services.security.create_access_token(

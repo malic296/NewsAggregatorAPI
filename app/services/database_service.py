@@ -36,6 +36,9 @@ class DatabaseService:
     def get_consumer_by_credential(self, credential: str ) -> Optional[Consumer]:
         return self.consumers.get_consumer_by_credential(credential)
     
+    def get_consumers_hash(self, uuid: str) -> str:
+        return self.consumers.get_consumers_hash(uuid)
+    
     def like_article(self, article_uuid: str, consumer_uuid: str) -> bool:
         try:
             article_id = self.articles.get_article_by_uuid(article_uuid)
