@@ -2,7 +2,8 @@ from typing import Optional
 from .base_repository import BaseRepository
 from app.interfaces.article_interface import ArticleInterface
 from datetime import datetime, timezone, timedelta
-from app.models import Consumer, Article
+from app.models import Consumer, Article, InternalError
+from fastapi import status
 
 class ArticleRepository(BaseRepository, ArticleInterface):
     def get_articles(self, consumer: Consumer, channel_ids: Optional[list[int]] = None, hours: int = 1) -> list[Article]:
@@ -28,21 +29,34 @@ class ArticleRepository(BaseRepository, ArticleInterface):
             params = (consumer.id, channel_ids, datetime.now(timezone.utc) - timedelta(hours=hours),)
         db_result = self._execute(query, params)
         if not db_result.success:
-            raise Exception(f"Failed getting articles because: {db_result.error_message}")
+            raise InternalError(
+                internal_message=f"Failed getting articles with get_articles method because: {db_result.error_message}",
+                public_message="Reading articles failed."
+            )
 
         try:
             return [Article(**article) for article in db_result.data]
         except Exception as e:
-            raise e
+            raise InternalError(
+                internal_message=f"Failed mapping db result to Article objects in method get_articles because: {db_result.error_message}",
+                public_message="Reading articles failed."
+            )
         
-    def article_uuid_to_id(self, article_uuid: str) -> Optional[int]:
+    def article_uuid_to_id(self, article_uuid: str) -> int:
         query = "SELECT id FROM article WHERE uuid = %s"
         db_result = self._execute(query, (article_uuid,))
 
         if not db_result.success:
-            raise Exception(f"Database query failed: {db_result.error_message}")
+            raise InternalError(
+                internal_message=f"Query created by article_uuid_to_id failed because: {db_result.error_message}",
+                public_message=f"Article with provided uuid was not found. ({article_uuid})"
+            )
 
         if not db_result.data or len(db_result.data) == 0:
-            return None
+            raise InternalError(
+                internal_message=f"article_uuid_to_id method did not find article for provided uuid.",
+                public_message=f"Article with provided uuid was not found. ({article_uuid})",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
 
         return db_result.data[0]["id"]

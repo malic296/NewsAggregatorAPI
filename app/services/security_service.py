@@ -5,6 +5,7 @@ from argon2 import PasswordHasher
 from dotenv import load_dotenv
 import jwt
 from jwt import PyJWTError
+from app.models import InternalError
 
 
 class SecurityService:
@@ -18,7 +19,16 @@ class SecurityService:
             self._algorithm = "HS256"
 
         except KeyError as e:
-            raise e
+            raise InternalError(
+                internal_message=f"Failed reading env vars for SecurityService because of missing key: {e}",
+                public_message=f"Failed due to invalid server configuration."
+            )
+        except Exception as e:
+            raise InternalError(
+                internal_message=f"SecurityService init failed because of unexpected error: {e}",
+                public_message=f"Failed due to invalid server configuration."
+            )
+
 
     def get_password_hash(self, password: str) -> str:
         password = password + self._pepper
@@ -29,8 +39,6 @@ class SecurityService:
             return self._hasher.verify(hashed_password, plain_password + self._pepper)
         except Exception as e:
             return False
-
-
 
     def create_access_token(self, data: dict) -> str:
         to_encode = data.copy()

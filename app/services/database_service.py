@@ -1,7 +1,8 @@
 from typing import Optional
-from app.models import AlreadyExistsEnum, Consumer, Channel, Article
+from app.models import AlreadyExistsEnum, Consumer, Channel, Article, InternalError
 from app.repositories import ChannelRepository, ConsumerRepository, ArticleRepository, LikesRepository
 from app.schemas import RegistrationDTO
+from fastapi import status
 
 class DatabaseService:
     def __init__(self, articles: ArticleRepository, channels: ChannelRepository, consumers: ConsumerRepository, likes: LikesRepository):
@@ -16,7 +17,10 @@ class DatabaseService:
     def get_channels(self) -> list[Channel]:
         channels: list[Channel] = self.channels.get_channels()
         if not channels:
-            raise Exception("Channels list cannot be empty.")
+            raise InternalError(
+                internal_message="Available channels are not DB persistent. Update database.",
+                public_message="Failed reading available channels because of inconsistent database."
+            )
         
         return channels
 
@@ -40,27 +44,19 @@ class DatabaseService:
             consumer = self.consumers.get_consumer_by_email(credential)
 
         if not consumer:
-            raise Exception("Consumer not found by provided credential.")
+            raise InternalError(
+                internal_message=f"Consumer not found by provided credential: {credential}.",
+                public_message="Unable to retrieve users data by provided user credential.",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
         return consumer
     
     def get_consumers_hash(self, uuid: str) -> str:
-        hash: str = self.consumers.get_consumers_hash(uuid)
-        if not hash:
-            raise Exception("No hash found for provided consumers UUID.")
-        
-        return hash
+        return self.consumers.get_consumers_hash(uuid)
     
     def like_article(self, article_uuid: str, consumer_uuid: str) -> bool:
-        try:
-            article_id = self.articles.article_uuid_to_id(article_uuid)
-        except Exception as e:
-            raise e
-        if not article_id:
-            raise Exception(f"Article with public ID {article_uuid} not found.")
-        
+        article_id = self.articles.article_uuid_to_id(article_uuid)
         consumer = self.consumers.get_consumer_by_uuid(consumer_uuid)
-        if not consumer:
-            raise Exception(f"Consumer with public ID {consumer_uuid} not found.")
         
         return self.likes.like_article(article_id=article_id, consumer_id=consumer.id)
 

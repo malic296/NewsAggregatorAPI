@@ -1,5 +1,5 @@
 from typing import Optional
-from app.models import Channel
+from app.models import Channel, InternalError
 from app.schemas import RegistrationDTO
 import redis
 from dotenv import load_dotenv
@@ -27,9 +27,15 @@ class CacheService:
                 decode_responses=True
             )
         except KeyError as e:
-            raise e
+            raise InternalError(
+                internal_message=f"Failed reading env vars for CacheService because of missing key: {e}",
+                public_message=f"Failed due to invalid server configuration."
+            )
         except Exception as e:
-            raise e
+            raise InternalError(
+                internal_message=f"CacheService init failed because of unexpected error: {e}",
+                public_message=f"Failed due to invalid server configuration."
+            )
 
     def is_registration_pending(self, registration: RegistrationDTO) -> bool:
         email_key = self._reg_key_prefix + registration.email
@@ -64,7 +70,14 @@ class CacheService:
 
             if int(json_data["code"]) == code:
                 self._client.delete(email_key)
-                return RegistrationDTO(**json_data["data"])
+                try:
+                    registration: RegistrationDTO = RegistrationDTO(**json_data["data"])
+                except Exception as e:
+                    raise InternalError(
+                        internal_message=f"Failed valkey data mapping to RegistrationDTO object in method provided_code_correct because: {e}",
+                        public_message="Failed provided code validation because of Server error."
+                    )
+                return registration
 
         return None
     
@@ -81,7 +94,14 @@ class CacheService:
             saved_data = self._client.get(channels_key)
             json_data = json.loads(saved_data)
 
-            return [Channel(**channel) for channel in json_data]
+            try:
+                channels: list[Channel] = [Channel(**channel) for channel in json_data]
+            except Exception as e:
+                raise InternalError(
+                    internal_message=f"Failed valkey data mapping to Channel objects in method get_available_channels because: {e}",
+                    public_message="Failed reading available channels because of Server error."
+                )
+            return channels
         
         return []
     

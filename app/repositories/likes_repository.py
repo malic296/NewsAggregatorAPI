@@ -1,5 +1,6 @@
 from .base_repository import BaseRepository
 from app.interfaces.likes_interface import LikesInterface
+from app.models import InternalError
 
 class LikesRepository(BaseRepository, LikesInterface):
     def like_article(self, article_id: int, consumer_id: int) -> bool:
@@ -8,7 +9,10 @@ class LikesRepository(BaseRepository, LikesInterface):
         result = self._execute(query, params)
 
         if not result.success:
-            raise Exception(f"Failed selecting from likes table because: {result.error_message}")
+            raise InternalError(
+                internal_message=f"Failed selecting from likes table because: {result.error_message}",
+                public_message="Liking articled failed due to server error."
+            )
         if result.data:
             query = "DELETE FROM likes WHERE article_id = %s and consumer_id = %s"
             liked = False
@@ -18,8 +22,14 @@ class LikesRepository(BaseRepository, LikesInterface):
 
         result = self._execute(query, params)
         if not result.row_count or result.row_count == 0:
-            raise Exception(f"Liking article resulted in no rows being changed.")
+            raise InternalError(
+                internal_message=f"Liking article resulted in no rows being changed.",
+                public_message="Liking articled failed due to server error."
+            )
         if not result.success:
-            raise Exception(f"Failed liking article because: {result.error_message}")
+            raise InternalError(
+                internal_message=f"Failed liking article because: {result.error_message}",
+                public_message="Liking articled failed due to server error."
+            )
         
         return liked

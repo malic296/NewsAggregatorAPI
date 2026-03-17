@@ -13,13 +13,13 @@ app = FastAPI()
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, err: Exception):
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     if isinstance(err, InternalError):
         print(f"LOGGING: {err.internal_message}") 
         status_code = err.status_code
         message = err.public_message
 
     else:
-        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         message = f"API failed for request: {request.method}"
 
     return JSONResponse(

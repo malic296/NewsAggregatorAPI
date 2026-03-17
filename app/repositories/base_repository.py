@@ -6,6 +6,8 @@ from typing import Optional
 from dotenv import load_dotenv
 from pathlib import Path
 from app.models import DBResult
+from app.models import InternalError
+from fastapi import status
 
 class BaseRepository:
     _db_init: bool = False
@@ -28,7 +30,16 @@ class BaseRepository:
                 cls._conn_string = f"{server}://{user}:{password}@{address}:{port}/{database}"
 
             except KeyError as e:
-                raise e
+                raise InternalError(
+                    internal_message=f"Missing environmental variable: {e}", 
+                    public_message="Failed because server configuration is wrong.", 
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            except Exception as e:
+                raise InternalError(
+                    internal_message=f"Loading env vars in base repository failed unexpectedly: {e}", 
+                    public_message="Failed because server configuration is wrong."
+                )
 
     @classmethod
     def _close_pool(cls) -> None:
@@ -51,7 +62,10 @@ class BaseRepository:
                 cls._pool.open()
                 atexit.register(cls._close_pool)
             except Exception as e:
-                raise e
+                raise InternalError(
+                    internal_message=f"Failed opening connection pool in base repository because: {e}",
+                    public_message="Failed because server configuration is wrong."
+                )
 
         return cls._pool
 
@@ -81,7 +95,10 @@ class BaseRepository:
                 conn.commit()
 
         except Exception as e:
-            raise e
+            raise InternalError(
+                internal_message=f"Failed db tables initialization because: {e}",
+                public_message="Failed because server configuration is wrong."
+            )
 
     def _execute(self, query: str, params: Optional[tuple] = None) -> DBResult:
         pool = self._get_pool()
