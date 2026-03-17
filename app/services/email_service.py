@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from pathlib import Path
-from app.models import InternalError
+from app.core.errors import InternalError
 
 class EmailService:
     def __init__(self):

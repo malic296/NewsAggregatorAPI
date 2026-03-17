@@ -1,7 +1,8 @@
 from typing import Optional
 from .base_repository import BaseRepository
 from app.interfaces import ConsumerInterface
-from app.models import Consumer, InternalError
+from app.models import Consumer
+from app.core.errors import InternalError
 from app.schemas import RegistrationDTO
 import uuid
 

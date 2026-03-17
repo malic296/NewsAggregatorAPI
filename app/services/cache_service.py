@@ -1,5 +1,6 @@
 from typing import Optional
-from app.models import Channel, InternalError
+from app.models import Channel
+from app.core.errors import InternalError
 from app.schemas import RegistrationDTO
 import redis
 from dotenv import load_dotenv

@@ -6,7 +6,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from pathlib import Path
 from app.models import DBResult
-from app.models import InternalError
+from app.core.errors import InternalError
 from fastapi import status
 
 class BaseRepository:

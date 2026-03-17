@@ -3,7 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies.auth import get_current_user
 from app.dependencies.service_container import get_service_container
 from fastapi.security import OAuth2PasswordRequestForm
-from app.models import ServiceContainer, AlreadyExistsEnum, Consumer
+from app.models import Consumer
+from app.core.enums import AlreadyExistsEnum
+from app.core.util import ServiceContainer
 from app.schemas import RegistrationDTO, ResponseDTO, ConsumerDTO
 
 consumer_router = APIRouter(

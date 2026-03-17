@@ -8,5 +8,5 @@ class ArticleInterface(ABC):
         ...
     
     @abstractmethod
-    def get_article_by_uuid(self, article_uuid: str) -> Optional[int]:
+    def article_uuid_to_id(self, article_uuid: str) -> Optional[int]:
         ...

@@ -1,4 +1,4 @@
-from app.models import ServiceContainer
+from app.core.util import ServiceContainer
 from app.services import DatabaseService, CacheService, EmailService, SecurityService
 from app.repositories import ArticleRepository, ChannelRepository, ConsumerRepository, LikesRepository
 

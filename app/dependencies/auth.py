@@ -2,7 +2,9 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, status
 from typing import Annotated
 from app.dependencies.service_container import get_service_container
-from app.models import ServiceContainer, Consumer, InternalError
+from app.models import Consumer
+from app.core.util import ServiceContainer
+from app.core.errors import InternalError
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/latest/consumers/login")
 

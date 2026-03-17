@@ -5,8 +5,7 @@ from argon2 import PasswordHasher
 from dotenv import load_dotenv
 import jwt
 from jwt import PyJWTError
-from app.models import InternalError
-
+from app.core.errors import InternalError
 
 class SecurityService:
     def __init__(self):

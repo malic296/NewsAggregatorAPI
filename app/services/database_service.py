@@ -1,5 +1,7 @@
 from typing import Optional
-from app.models import AlreadyExistsEnum, Consumer, Channel, Article, InternalError
+from app.models import Consumer, Channel, Article
+from app.core.errors import InternalError
+from app.core.enums import AlreadyExistsEnum
 from app.repositories import ChannelRepository, ConsumerRepository, ArticleRepository, LikesRepository
 from app.schemas import RegistrationDTO
 from fastapi import status

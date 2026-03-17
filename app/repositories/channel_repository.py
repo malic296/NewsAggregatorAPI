@@ -1,4 +1,5 @@
-from app.models import Channel, InternalError
+from app.models import Channel
+from app.core.errors import InternalError
 from .base_repository import BaseRepository
 from app.interfaces import ChannelInterface
 

@@ -1,6 +1,6 @@
 from .base_repository import BaseRepository
 from app.interfaces.likes_interface import LikesInterface
-from app.models import InternalError
+from app.core.errors import InternalError
 
 class LikesRepository(BaseRepository, LikesInterface):
     def like_article(self, article_id: int, consumer_id: int) -> bool:

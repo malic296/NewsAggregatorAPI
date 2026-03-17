@@ -1,5 +1,6 @@
 from fastapi import Depends, APIRouter, Query
-from models import ServiceContainer, Article, InternalError
+from app.models import Article
+from app.core.util import ServiceContainer
 from app.schemas import ArticleDTO, ResponseDTO
 from app.dependencies.service_container import get_service_container
 from app.dependencies.auth import get_current_user

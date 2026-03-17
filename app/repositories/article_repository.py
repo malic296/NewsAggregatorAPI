@@ -2,7 +2,8 @@ from typing import Optional
 from .base_repository import BaseRepository
 from app.interfaces.article_interface import ArticleInterface
 from datetime import datetime, timezone, timedelta
-from app.models import Consumer, Article, InternalError
+from app.models import Consumer, Article
+from app.core.errors import InternalError
 from fastapi import status
 
 class ArticleRepository(BaseRepository, ArticleInterface):

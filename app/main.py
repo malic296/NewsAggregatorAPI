@@ -5,7 +5,7 @@ from app.api.v2.article import article_router
 from app.api.v2.channel import channel_router
 from app.api.v2.consumer import consumer_router
 from app.api.v2.like import like_router
-from app.models import InternalError
+from app.core.errors import InternalError
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 
