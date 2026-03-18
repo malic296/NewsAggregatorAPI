@@ -3,11 +3,32 @@ from app.models import Channel
 from app.core.errors import InternalError
 from app.schemas import RegistrationDTO
 import redis
+from redis.exceptions import RedisError
 from dotenv import load_dotenv
 from pathlib import Path
 import os
 import json
 from dataclasses import asdict
+from functools import wraps
+
+def handle_cache_errors(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except RedisError as e:
+            raise InternalError(
+                internal_message=f"Cache service method {f.__name__} failed because: {e}",
+                public_message="Cache service failed because of Server error."
+            )
+
+        except Exception as e:
+            raise InternalError(
+                internal_message=f"Cache service method {f.__name__} failed because: {e}",
+                public_message="Cache service failed because of Server error."
+            )
+
+    return wrapper
 
 class CacheService:
     def __init__(self):
@@ -27,6 +48,9 @@ class CacheService:
                 db=db,
                 decode_responses=True
             )
+
+            self._client.ping()
+
         except KeyError as e:
             raise InternalError(
                 internal_message=f"Failed reading env vars for CacheService because of missing key: {e}",
@@ -38,18 +62,21 @@ class CacheService:
                 public_message=f"Failed due to invalid server configuration."
             )
 
+    @handle_cache_errors
     def is_registration_pending(self, registration: RegistrationDTO) -> bool:
         email_key = self._reg_key_prefix + registration.email
 
         exists_count = self._client.exists(email_key)
         return exists_count > 0
 
+    @handle_cache_errors
     def delete_registration_from_pending(self, registration: RegistrationDTO) -> None:
         email_key = self._reg_key_prefix + registration.email
 
         if self._client.exists(email_key):
             self._client.delete(email_key)
 
+    @handle_cache_errors
     def create_pending_registration(self, registration: RegistrationDTO, code: int) -> None:
         email_key = self._reg_key_prefix + registration.email
 
@@ -61,7 +88,7 @@ class CacheService:
 
             self._client.setex(email_key, 120, json.dumps(dict_data))
 
-
+    @handle_cache_errors
     def provided_code_correct(self, email: str, code: int) -> Optional[RegistrationDTO]:
         email_key = self._reg_key_prefix + email
 
@@ -81,13 +108,14 @@ class CacheService:
                 return registration
 
         return None
-    
-    
+
+    @handle_cache_errors
     def set_available_channels(self, channels: list[Channel]) -> None:
         channels_key = self._data_key_prefix + "available_channels"
 
         self._client.setex(channels_key, 5, json.dumps([asdict(channel) for channel in channels]))
 
+    @handle_cache_errors
     def get_available_channels(self) -> list[Channel]:
         channels_key = self._data_key_prefix + "available_channels"
 
