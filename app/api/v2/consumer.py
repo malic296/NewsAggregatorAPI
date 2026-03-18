@@ -81,13 +81,12 @@ def login(login: OAuth2PasswordRequestForm = Depends(), services: ServiceContain
 
 @consumer_router.post("/get_currently_logged_consumer", response_model=ResponseDTO[ConsumerDTO])
 def get_currently_logged_consumer(current_user = Depends(get_current_user), services: ServiceContainer = Depends(get_service_container)):
-    consumer: Consumer = services.db.get_consumer_by_credential(current_user["username"])
-    
+
     return ResponseDTO(
         status_code=200,
         success=True,
         message="Current user fetched successful.",
-        data = consumer
+        data = current_user
     )
 
 

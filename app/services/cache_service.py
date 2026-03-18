@@ -56,6 +56,13 @@ class CacheService:
                 internal_message=f"Failed reading env vars for CacheService because of missing key: {e}",
                 public_message=f"Failed due to invalid server configuration."
             )
+
+        except RedisError as e:
+            raise InternalError(
+                internal_message=f"Valkey failed in cache service init because: {e}",
+                public_message=f"Failed due to invalid server configuration."
+            )
+
         except Exception as e:
             raise InternalError(
                 internal_message=f"CacheService init failed because of unexpected error: {e}",

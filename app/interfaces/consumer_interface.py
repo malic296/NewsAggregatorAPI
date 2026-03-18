@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import Optional
-from app.core.enums import AlreadyExistsEnum
 from app.models import Consumer
 from app.schemas import RegistrationDTO
 

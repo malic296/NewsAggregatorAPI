@@ -8,28 +8,26 @@ import uuid
 
 class ConsumerRepository(BaseRepository, ConsumerInterface):
     def register_consumer(self, registration: RegistrationDTO) -> Consumer:
-        query = "INSERT INTO password(hash) VALUES (%s) RETURNING id"
-        params = (registration.password,)
-        result = self._execute(query, params)
-        if not result.success:
-            raise InternalError(
-                internal_message=f"Failed saving password for consumer to db in method register_consumer because: {result.error_message}",
-                public_message="Could not finish registration because server error."
+        query = """
+            WITH 
+            new_password AS (
+                INSERT INTO password(hash) VALUES (%s) RETURNING id, hash
+            ),
+            new_consumer AS (
+                INSERT INTO consumer(username, email, password_id, uuid)
+                SELECT %s, %s, id, %s FROM new_password
+                RETURNING id, uuid, username, email, password_id
             )
-        password_id = result.data[0]["id"]
-
-        query = "INSERT INTO consumer(username, email, password_id, uuid) VALUES (%s, %s, %s, %s) RETURNING id"
-        params = (registration.username, registration.email, password_id, str(uuid.uuid4()))
-        result = self._execute(query, params)
-        if not result.success:
-            raise InternalError(
-                internal_message=f"Failed inserting consumer to db in method register_consumer because: {result.error_message}",
-                public_message="Could not finish registration because server error."
-            )
-        consumer_id = result.data[0]["id"]
-
-        query = "SELECT c.id AS id, c.uuid AS uuid, c.username AS username, c.email AS email, p.hash AS password FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.id = %s"
-        params = (consumer_id,)
+            SELECT nc.id, nc.uuid, nc.username, nc.email
+            FROM new_consumer nc
+            JOIN new_password np ON nc.password_id = np.id;
+        """
+        params = (
+            registration.password,
+            registration.username,
+            registration.email,
+            str(uuid.uuid4())
+        )
         result = self._execute(query, params)
         if not result.success:
             raise InternalError(
