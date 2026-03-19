@@ -5,6 +5,8 @@ from argon2 import PasswordHasher
 from dotenv import load_dotenv
 import jwt
 from jwt import PyJWTError
+from fastapi import status
+
 from app.core.errors import InternalError
 
 class SecurityService:
@@ -19,13 +21,11 @@ class SecurityService:
 
         except KeyError as e:
             raise InternalError(
-                internal_message=f"Failed reading env vars for SecurityService because of missing key: {e}",
-                public_message=f"Failed due to invalid server configuration."
+                internal_message=f"Failed reading env vars for SecurityService because of missing key: {e}"
             )
         except Exception as e:
             raise InternalError(
-                internal_message=f"SecurityService init failed because of unexpected error: {e}",
-                public_message=f"Failed due to invalid server configuration."
+                internal_message=f"SecurityService init failed because of unexpected error: {e}"
             )
 
 
@@ -33,11 +33,14 @@ class SecurityService:
         password = password + self._pepper
         return self._hasher.hash(password)
 
-    def verify_password(self, hashed_password: str, plain_password: str) -> bool:
+    def verify_password(self, hashed_password: str, plain_password: str) -> None:
         try:
-            return self._hasher.verify(hashed_password, plain_password + self._pepper)
+            self._hasher.verify(hashed_password, plain_password + self._pepper)
         except Exception as e:
-            return False
+            raise InternalError(
+                public_message=f"Invalid login credentials.",
+                status_code=status.HTTP_401_UNAUTHORIZED
+            )
 
     def create_access_token(self, data: dict) -> str:
         to_encode = data.copy()

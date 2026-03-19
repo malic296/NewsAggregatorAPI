@@ -31,15 +31,13 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
         result = self._execute(query, params)
         if not result.success:
             raise InternalError(
-                internal_message=f"Failed reading consumer from db after creation in method register_consumer because: {result.error_message}",
-                public_message="Could not finish registration because server error."
+                internal_message=f"Register query failed in register_consumer because: {result.error_message}"
             )
         try:
             consumer: Consumer = Consumer(**result.data[0])
         except Exception as e:
             raise InternalError(
-                internal_message=f"Failed mapping of db result data to consumer object in method register_consumer because: {result.error_message}",
-                public_message="Could not finish registration because server error."
+                internal_message=f"Failed mapping of db result data to consumer object in method register_consumer because: {e}"
             )
         return consumer
 
@@ -49,8 +47,7 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
         result = self._execute(query, params)
         if not result.success: 
             raise InternalError(
-                internal_message=f"Method get_consumer_by_email failed because: {result.error_message}",
-                public_message="Could not retrieve user because of server error."
+                internal_message=f"Method get_consumer_by_email failed because: {result.error_message}"
             )
         
         if result.data:
@@ -58,8 +55,7 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
                 consumer: Consumer = Consumer(**result.data[0])
             except Exception as e:
                 raise InternalError(
-                    internal_message=f"Failed mapping of db result data to consumer object in method get_consumer_by_email because: {result.error_message}",
-                    public_message="Could not retrieve user because of server error."
+                    internal_message=f"Failed mapping of db result data to consumer object in method get_consumer_by_email because: {e}"
                 )
             return consumer
         return None
@@ -70,16 +66,14 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
         result = self._execute(query, params)
         if not result.success: 
             raise InternalError(
-                internal_message=f"Method get_consumer_by_username failed because: {result.error_message}",
-                public_message="Could not retrieve user because of server error."
+                internal_message=f"Method get_consumer_by_username failed because: {result.error_message}"
             )
         if result.data:
             try:
                 consumer: Consumer = Consumer(**result.data[0])
             except Exception as e:
                 raise InternalError(
-                    internal_message=f"Failed mapping of db result data to consumer object in method get_consumer_by_email because: {result.error_message}",
-                    public_message="Could not retrieve user because of server error."
+                    internal_message=f"Failed mapping of db result data to consumer object in method get_consumer_by_email because: {e}"
                 )
             return consumer
 
@@ -92,50 +86,43 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
         result = self._execute(query, params)
         if not result.success: 
             raise InternalError(
-                internal_message=f"Method get_consumer_by_uuid failed because: {result.error_message}",
-                public_message="Could not retrieve user because of server error."
+                internal_message=f"Method get_consumer_by_uuid failed because: {result.error_message}"
             )
 
         try:
             consumer: Consumer = Consumer(**result.data[0])
         except Exception as e:
             raise InternalError(
-                internal_message=f"Failed mapping of db result data to consumer object in method get_consumer_by_email because: {result.error_message}",
-                public_message="Could not retrieve user because of server error."
+                internal_message=f"Failed mapping of db result data to consumer object in method get_consumer_by_email because: {e}"
             )
         return consumer
     
-    def get_consumers_hash(self, uuid: str) -> str:
+    def get_consumers_hash(self, id: int) -> Optional[str]:
         query = """
-            SELECT p.hash AS password from 
+            SELECT p.hash AS hash from 
             consumer AS c 
             JOIN 
             password AS p 
             ON
             c.password_id = p.id
             WHERE 
-            c.uuid = %s
+            c.id = %s
         """
-        params = (uuid, )
+        params = (id, )
 
         result = self._execute(query=query, params=params)
         if not result.success: 
             raise InternalError(
-                internal_message=f"Failed getting saved hash from DB by users public ID {uuid} because: {result.error_message}",
-                public_message="Failed due to inconsistent DB."
+                internal_message=f"Failed getting saved hash from DB by users ID {id} because: {result.error_message}"
             )
 
         if not result.data:
-            raise InternalError(
-                internal_message=f"Method get_consumers_hash failed because no data were found for provided uuid. {uuid}.",
-                public_message=f"Could not retrieve hash for provided users uuid because no data was found {uuid}."
-            )
+            return None
 
         try:
-            password: str = result.data[0]["password"]
+            hash: str = result.data[0]["hash"]
         except Exception as e:
             raise InternalError(
-                internal_message=f"Method get_consumers_hash returned unexpected DB result. {e}.",
-                public_message="Could not retrieve users info because of server error."
+                internal_message=f"Method get_consumers_hash returned unexpected DB result. {e}."
             )
-        return password
+        return hash

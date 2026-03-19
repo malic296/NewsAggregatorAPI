@@ -12,8 +12,7 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], services: Se
     payload = services.security.decode_access_token(token)
     if payload is None:
         raise InternalError(
-            public_message="Invalid login credentials.",
-            internal_message="get_current_user auth method failed to get payload from provided token.",
+            public_message="You need to login or register first to use this endpoint.",
             status_code=status.HTTP_401_UNAUTHORIZED
         )
     

@@ -122,5 +122,5 @@ class BaseRepository:
         except Exception as e:
             return DBResult(
                 success = False,
-                error_message=e
+                error_message=str(e)
             )

@@ -11,7 +11,7 @@ like_router = APIRouter(
 
 @like_router.post("/like_article", response_model=ResponseDTO)
 def like_article(article_uuid: str, user: Consumer = Depends(get_current_user), services = Depends(get_service_container)):
-    liked: bool = services.db.like_article(article_uuid, user.uuid)
+    liked: bool = services.db.like_article(article_uuid, user)
     return ResponseDTO(
         success= True,
         message = f"Article with uuid {article_uuid} has been liked." if liked else f"Article with uuid {article_uuid} has been unliked.",
