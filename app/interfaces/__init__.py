@@ -1,4 +1,3 @@
 from .article_interface import ArticleInterface
 from .channel_interface import ChannelInterface
 from .consumer_interface import ConsumerInterface
-from .likes_interface import LikesInterface
