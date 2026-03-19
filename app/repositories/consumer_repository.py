@@ -124,7 +124,13 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
                 internal_message=f"Failed getting saved hash from DB by users public ID {uuid} because: {result.error_message}",
                 public_message="Failed due to inconsistent DB."
             )
-        
+
+        if not result.data:
+            raise InternalError(
+                internal_message=f"Method get_consumers_hash failed because no data were found for provided uuid. {uuid}.",
+                public_message=f"Could not retrieve hash for provided users uuid because no data was found {uuid}."
+            )
+
         try:
             password: str = result.data[0]["password"]
         except Exception as e:

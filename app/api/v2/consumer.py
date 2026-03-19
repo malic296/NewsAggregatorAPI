@@ -7,6 +7,7 @@ from app.models import Consumer
 from app.core.enums import AlreadyExistsEnum
 from app.core.util import ServiceContainer
 from app.schemas import RegistrationDTO, ResponseDTO, ConsumerDTO
+from app.core.errors import InternalError
 
 consumer_router = APIRouter(
     prefix="/consumers",
@@ -19,9 +20,9 @@ def request_new_registration(registration: RegistrationDTO, services: ServiceCon
     is_used_by = services.db.is_username_or_email_used(username=registration.username, email=registration.email)
     match is_used_by:
         case AlreadyExistsEnum.EMAIL:
-            raise HTTPException(status_code=400, detail="Email already used")
+            raise InternalError(status_code=400, public_message=f"Email {registration.email} already used.", internal_message="Provided email already used.")
         case AlreadyExistsEnum.USERNAME:
-            raise HTTPException(status_code=400, detail="Username already used")
+            raise InternalError(status_code=400, public_message=f"Username {registration.username} already used.", internal_message="Provided username already used.")
         case _:
             is_pending = services.cache.is_registration_pending(registration)
             if is_pending:
@@ -54,18 +55,16 @@ def verify_email(email: str, code:int,  services: ServiceContainer = Depends(get
             "token_type": "Bearer"
         }
     else:
-        raise HTTPException(status_code=400, detail="Invalid or expired code")
+        raise InternalError(status_code=400, public_message="Invalid or expired code", internal_message=f"Provided code {code} is invalid for email {email}.")
 
 @consumer_router.post("/login")
 def login(login: OAuth2PasswordRequestForm = Depends(), services: ServiceContainer = Depends(get_service_container)):
     consumer: Consumer = services.db.get_consumer_by_credential(login.username)
-    if not consumer:
-        raise HTTPException(status_code=400, detail="Incorrect login details.")
 
     saved_hash = services.db.get_consumers_hash(consumer.uuid)
 
     if not services.security.verify_password(saved_hash, login.password):
-        raise HTTPException(status_code=400, detail="Incorrect login details.")
+        raise InternalError(status_code=400, public_message="Incorrect login details.")
 
     token = services.security.create_access_token(
         {
