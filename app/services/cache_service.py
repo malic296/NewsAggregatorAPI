@@ -10,6 +10,8 @@ from pathlib import Path
 import os
 import json
 from dataclasses import asdict
+from redis.retry import Retry
+from redis.backoff import NoBackoff
 
 class CacheService:
     def __init__(self):
@@ -27,7 +29,9 @@ class CacheService:
                 host=host,
                 port=port,
                 db=db,
-                decode_responses=True
+                decode_responses=True,
+                retry=Retry(NoBackoff(), 0),
+                socket_connect_timeout=2.0
             )
 
             self._client.ping()

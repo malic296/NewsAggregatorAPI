@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from pathlib import Path
 from app.models import DBResult
 from app.core.errors import InternalError
-from fastapi import status
 
 class BaseRepository:
     _db_init: bool = False
@@ -31,14 +30,11 @@ class BaseRepository:
 
             except KeyError as e:
                 raise InternalError(
-                    internal_message=f"Missing environmental variable: {e}", 
-                    public_message="Failed because server configuration is wrong.", 
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    internal_message=f"Missing environmental variable: {e}"
                 )
             except Exception as e:
                 raise InternalError(
-                    internal_message=f"Loading env vars in base repository failed unexpectedly: {e}", 
-                    public_message="Failed because server configuration is wrong."
+                    internal_message=f"Loading env vars in base repository failed unexpectedly: {e}"
                 )
 
     @classmethod
@@ -55,7 +51,7 @@ class BaseRepository:
                 cls._pool = ConnectionPool(
                     conninfo=cls._conn_string,
                     timeout=1.0,
-                    open=True,
+                    open=False,
                     reconnect_failed=lambda pool: pool.close() if not cls._db_init else None
 
                 )
@@ -63,8 +59,7 @@ class BaseRepository:
                 atexit.register(cls._close_pool)
             except Exception as e:
                 raise InternalError(
-                    internal_message=f"Failed opening connection pool in base repository because: {e}",
-                    public_message="Failed because server configuration is wrong."
+                    internal_message=f"Failed opening connection pool in base repository because: {e}"
                 )
 
         return cls._pool
@@ -96,8 +91,7 @@ class BaseRepository:
 
         except Exception as e:
             raise InternalError(
-                internal_message=f"Failed db tables initialization because: {e}",
-                public_message="Failed because server configuration is wrong."
+                internal_message=f"Failed db tables initialization because: {e}"
             )
 
     def _execute(self, query: str, params: Optional[tuple] = None) -> DBResult:
