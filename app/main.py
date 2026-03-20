@@ -25,7 +25,8 @@ async def global_exception_handler(request: Request, err: Exception):
         message = err.public_message
 
     else:
-        message = f"API failed for request: {request}"
+        message = f"API failed unexpectedly"
+        logger.handle(message + f" because: {str(err)} for request: {request}")
 
     return JSONResponse(
         status_code=status_code,
