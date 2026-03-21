@@ -36,9 +36,9 @@ class SecurityService:
     def verify_password(self, hashed_password: str, plain_password: str) -> None:
         try:
             self._hasher.verify(hashed_password, plain_password + self._pepper)
-        except Exception as e:
+        except Exception:
             raise InternalError(
-                public_message=f"Invalid login credentials.",
+                public_message="Invalid login credentials.",
                 status_code=status.HTTP_401_UNAUTHORIZED
             )
 
