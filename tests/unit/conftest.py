@@ -1,7 +1,7 @@
 import pytest
-from app.services import EmailService, SecurityService
+from app.services import EmailService, SecurityService, CacheService
 from app.dependencies.logging import get_logging_handler
-import redis
+from app.schemas import RegistrationDTO
 
 @pytest.fixture(scope="session")
 def email_service():
@@ -28,3 +28,11 @@ def mocked_redis(mocker, monkeypatch):
     mock_instance.ping.return_value = True
 
     return mock_instance
+
+@pytest.fixture
+def cache_service(mocked_redis):
+    return CacheService()
+
+@pytest.fixture
+def registration_dto():
+    return RegistrationDTO(username="username", email="email", password="password")
