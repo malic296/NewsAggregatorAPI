@@ -36,7 +36,7 @@ class DatabaseService:
     def register_consumer(self, registration: RegistrationDTO) -> Consumer:
         return self.consumers.register_consumer(registration)
     
-    def get_consumer_by_credential(self, credential: str ) -> Consumer:
+    def get_consumer_by_credential(self, credential: str) -> Consumer:
         consumer = self.consumers.get_consumer_by_username(credential)
         if not consumer:
             consumer = self.consumers.get_consumer_by_email(credential)

@@ -1,7 +1,8 @@
 import pytest
-from app.services import EmailService, SecurityService, CacheService
+from app.services import EmailService, SecurityService, CacheService, DatabaseService
 from app.dependencies.logging import get_logging_handler
 from app.schemas import RegistrationDTO
+from app.repositories import ArticleRepository, ChannelRepository, ConsumerRepository
 
 @pytest.fixture(scope="session")
 def email_service():
@@ -36,3 +37,7 @@ def cache_service(mocked_redis):
 @pytest.fixture
 def registration_dto():
     return RegistrationDTO(username="username", email="email", password="password")
+
+@pytest.fixture
+def db_service():
+    return DatabaseService(articles=ArticleRepository(), channels=ChannelRepository(), consumers=ConsumerRepository())
