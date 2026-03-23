@@ -9,7 +9,7 @@ class ChannelRepository(BaseRepository, ChannelInterface):
         db_result = self._execute(query)
         if not db_result.success or not db_result.data:
             raise InternalError(
-                internal_message=f"Query created by get_channels failed because: {db_result.error_message if db_result.error_message else "There are no saved channels in DB."}."
+                internal_message=f"Query created by get_channels failed because: {db_result.error_message if db_result.error_message else "There are no saved channels in DB"}."
             )
 
         try:

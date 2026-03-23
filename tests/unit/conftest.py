@@ -4,7 +4,7 @@ from app.services import EmailService, SecurityService, CacheService, DatabaseSe
 from app.dependencies.logging import get_logging_handler
 from app.schemas import RegistrationDTO
 from app.repositories import ArticleRepository, ChannelRepository, ConsumerRepository, LoggingRepository
-from app.models import DBResult, Article
+from app.models import DBResult, Article, Channel
 from dataclasses import asdict
 
 @pytest.fixture(scope="session")
@@ -81,6 +81,19 @@ def db_result_articles() -> DBResult:
         success=True,
         data=[asdict(article) for article in articles],
         row_count=len(articles)
+    )
+
+@pytest.fixture
+def db_result_channels() -> DBResult:
+    channels = [
+        Channel(id=1, uuid="1", title="TITLE_1", link="CHANNEL_LINK1"),
+        Channel(id=2, uuid="2", title="TITLE_2", link="CHANNEL_LINK2"),
+    ]
+
+    return DBResult(
+        success=True,
+        data=[asdict(channel) for channel in channels],
+        row_count=len(channels)
     )
 
 @pytest.fixture
