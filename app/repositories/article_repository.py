@@ -37,7 +37,7 @@ class ArticleRepository(BaseRepository, ArticleInterface):
             return [Article(**article) for article in db_result.data]
         except Exception as e:
             raise InternalError(
-                internal_message=f"Failed mapping db result to Article objects in method get_articles because: {db_result.error_message}"
+                internal_message=f"Failed mapping db result to Article objects in method get_articles because: {e}"
             )
 
     def article_uuid_to_id(self, article_uuid: str) -> Optional[int]:
@@ -56,7 +56,7 @@ class ArticleRepository(BaseRepository, ArticleInterface):
             return db_result.data[0]["id"]
         except Exception as e:
             raise InternalError(
-                internal_message=f"Method article_uuid_to_id failed because id key not found in DB response."
+                internal_message=f"Method article_uuid_to_id failed because invalid data format: {e}."
             )
 
     def like_article(self, article_id: int, consumer_id: int) -> bool:
