@@ -4,7 +4,7 @@ from app.services import EmailService, SecurityService, CacheService, DatabaseSe
 from app.dependencies.logging import get_logging_handler
 from app.schemas import RegistrationDTO
 from app.repositories import ArticleRepository, ChannelRepository, ConsumerRepository, LoggingRepository
-from app.models import DBResult, Article, Channel
+from app.models import DBResult, Article, Channel, Consumer
 from dataclasses import asdict
 
 @pytest.fixture(scope="session")
@@ -101,6 +101,16 @@ def db_result_id() -> DBResult:
     return DBResult(
         success=True,
         data=[{"id": 1}],
+        row_count=1
+    )
+
+@pytest.fixture
+def db_result_consumer() -> DBResult:
+    consumer = Consumer(id=1, uuid="1", username="username", email="email")
+
+    return DBResult(
+        success=True,
+        data=[asdict(consumer)],
         row_count=1
     )
 
