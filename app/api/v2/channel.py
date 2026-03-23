@@ -17,6 +17,7 @@ def get_available_channels(services: ServiceContainer = Depends(get_service_cont
     if not channels:
         channels: list[Channel] = services.db.get_channels()
         services.cache.set_available_channels(channels)
+        
     return ResponseDTO(
         status_code=200,
         message="Channels fetched correctly",
