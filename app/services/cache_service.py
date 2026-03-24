@@ -3,7 +3,7 @@ from typing import Optional
 from app.models import Channel
 from app.core.errors import InternalError
 from app.schemas import RegistrationDTO
-import redis
+from redis import Redis
 from redis.exceptions import RedisError
 from dotenv import load_dotenv
 from pathlib import Path
@@ -25,7 +25,7 @@ class CacheService:
             port = int(os.environ["REDIS_PORT"])
             db = int(os.environ["REDIS_DB"])
 
-            self._client = redis.Redis(
+            self._client = Redis(
                 host=host,
                 port=port,
                 db=db,
