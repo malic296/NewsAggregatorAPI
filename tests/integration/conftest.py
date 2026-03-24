@@ -16,7 +16,14 @@ def mock_services(mocker):
 
 @pytest.fixture
 def test_client(mocker, mocked_consumer, mock_services):
-    mocker.patch("app.dependencies.auth.get_current_user", return_value=Consumer(id=1, uuid="1", username="username", email="email"))
+    app.dependency_overrides.clear()
     app.dependency_overrides[get_current_user] = lambda: mocked_consumer
     app.dependency_overrides[get_service_container] = lambda: mock_services
-    return TestClient(app)
+    return TestClient(app, raise_server_exceptions=False)
+
+@pytest.fixture
+def test_client_without_jwt(mocker, mock_services):
+    app.dependency_overrides.clear()
+    mock_services.security.decode_access_token.return_value = None
+    app.dependency_overrides[get_service_container] = lambda: mock_services
+    return TestClient(app, raise_server_exceptions=False)

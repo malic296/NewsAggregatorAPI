@@ -70,7 +70,7 @@ def login(login: OAuth2PasswordRequestForm = Depends(), services: ServiceContain
         "token_type": "Bearer"
     }
 
-@consumer_router.post("/get_currently_logged_consumer", response_model=ResponseDTO[ConsumerDTO])
+@consumer_router.get("/get_currently_logged_consumer", response_model=ResponseDTO[ConsumerDTO])
 def get_currently_logged_consumer(current_user: Consumer = Depends(get_current_user)):
     return ResponseDTO(
         status_code=200,
