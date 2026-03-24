@@ -6,6 +6,7 @@ from app.schemas import RegistrationDTO
 from app.repositories import ArticleRepository, ChannelRepository, ConsumerRepository, LoggingRepository
 from app.models import DBResult, Article, Channel, Consumer
 from dataclasses import asdict
+import os
 
 @pytest.fixture(scope="session")
 def email_service():
@@ -24,7 +25,7 @@ def mocked_redis(mocker, monkeypatch):
     mock_class = mocker.patch("redis.Redis")
     
     mock_instance = mock_class.return_value
-    
+
     monkeypatch.setenv("REDIS_HOST", "localhost")
     monkeypatch.setenv("REDIS_PORT", "6379")
     monkeypatch.setenv("REDIS_DB", "0")
@@ -34,8 +35,10 @@ def mocked_redis(mocker, monkeypatch):
     return mock_instance
 
 @pytest.fixture
-def cache_service(mocked_redis):
-    return CacheService()
+def cache_service(mocked_redis, mocker):
+    service = CacheService()
+    mocker.patch.object(service, "_client", mocked_redis)
+    return service
 
 @pytest.fixture
 def registration_dto():
