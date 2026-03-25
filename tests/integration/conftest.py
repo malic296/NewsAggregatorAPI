@@ -1,6 +1,9 @@
 from fastapi.testclient import TestClient
 import pytest
-from app.dependencies.auth import get_current_user
+from fastapi_limiter.depends import RateLimiter
+from pyrate_limiter import Limiter, Rate, Duration
+
+from app.dependencies.auth import get_current_user, get_rate_limiter
 from app.dependencies.service_container import get_service_container
 from app.main import app
 from app.models import Consumer
@@ -15,14 +18,14 @@ def mock_services(mocker):
     return mock
 
 @pytest.fixture
-def test_client(mocker, mocked_consumer, mock_services):
+def test_client(mocked_consumer, mock_services):
     app.dependency_overrides.clear()
     app.dependency_overrides[get_current_user] = lambda: mocked_consumer
     app.dependency_overrides[get_service_container] = lambda: mock_services
     return TestClient(app, raise_server_exceptions=False)
 
 @pytest.fixture
-def test_client_without_jwt(mocker, mock_services):
+def test_client_without_jwt(mock_services):
     app.dependency_overrides.clear()
     mock_services.security.decode_access_token.return_value = None
     app.dependency_overrides[get_service_container] = lambda: mock_services

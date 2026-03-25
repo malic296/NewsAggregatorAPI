@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from app.api.v1.article import article_router_v1
 from app.api.v1.channel import channel_router_v1
 from app.api.v2.article import article_router
@@ -6,12 +6,17 @@ from app.api.v2.channel import channel_router
 from app.api.v2.consumer import consumer_router
 from app.api.v2.like import like_router
 from app.core.errors import InternalError
-from fastapi import Request, status
+from fastapi import Request, status, Depends
 from fastapi.responses import JSONResponse
 from app.dependencies.logging import get_logging_handler
 from app.handlers import LoggingHandler
+from app.dependencies.auth import get_rate_limiter
 
-app = FastAPI()
+#USE FOR TESTS
+#app = FastAPI()
+
+#USE FOR PRODUCTION
+app = FastAPI(dependencies=[Depends(get_rate_limiter())])
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, err: Exception):
@@ -26,7 +31,7 @@ async def global_exception_handler(request: Request, err: Exception):
 
     else:
         message = f"API failed unexpectedly"
-        logger.handle(message + f" because: {str(err)} for request: {request}")
+        logger.handle(f"{message} because: {str(err)} for {request.method} {request.url}")
 
     return JSONResponse(
         status_code=status_code,
@@ -35,6 +40,27 @@ async def global_exception_handler(request: Request, err: Exception):
             "message": message
         }
     )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, err: HTTPException):
+    if err.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+        message = "You have exceeded the rate limit."
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={
+                "success": False,
+                "message": message
+            }
+        )
+
+    return JSONResponse(
+        status_code=err.status_code,
+        content={
+            "success": False,
+            "message": err.detail
+        }
+    )
+
 
 app.include_router(article_router, prefix="/latest")
 app.include_router(channel_router, prefix="/latest")
