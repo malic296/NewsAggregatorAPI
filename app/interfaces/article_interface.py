@@ -4,7 +4,7 @@ from app.models import Article, Consumer
 
 class ArticleInterface(ABC):
     @abstractmethod
-    def get_articles(self, consumer: Consumer, channel_ids: Optional[list[int]] = None, hours: int = 1) -> list[Article]:
+    def get_articles(self, consumer: Consumer, hours: int = 1) -> list[Article]:
         ...
     
     @abstractmethod

@@ -11,8 +11,8 @@ article_router = APIRouter(
 )
 
 @article_router.get("/", response_model=ResponseDTO[list[ArticleDTO]])
-def get_articles(hours: int = 1, channel_ids: list[int] = Query(default=None), user = Depends(get_current_user), services: ServiceContainer = Depends(get_service_container)):
-    articles: list[Article] = services.db.get_articles(consumer=user, hours=hours, channel_ids=channel_ids)
+def get_articles(hours: int = 1, user = Depends(get_current_user), services: ServiceContainer = Depends(get_service_container)):
+    articles: list[Article] = services.db.get_articles(consumer=user, hours=hours)
     
     return ResponseDTO(
         status_code=200,

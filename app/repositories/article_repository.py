@@ -6,38 +6,44 @@ from app.models import Consumer, Article
 from app.core.errors import InternalError
 
 class ArticleRepository(BaseRepository, ArticleInterface):
-    def get_articles(self, consumer: Consumer, channel_ids: Optional[list[int]] = None, hours: int = 1) -> list[Article]:
+    def get_articles(self, consumer: Consumer, hours: int = 1) -> list[Article]:
         query = """
-            SELECT 
-            a.id AS id, a.uuid AS uuid, a.title AS title, a.description AS description, a.link AS link, a.pub_date AS pub_date, c.link AS channel_link, COUNT(l.id) as likes,
-            EXISTS (
-                SELECT 1 FROM likes 
-                WHERE article_id = a.id AND consumer_id = %s
-            ) AS liked_by_user    
-            FROM article AS a 
-            LEFT JOIN likes AS l ON 
-            a.id = l.article_id
-            JOIN channel AS c ON
-            c.id = a.channel_id
-        """
-        if channel_ids is None or not isinstance(channel_ids, list) or len(channel_ids) == 0 :
-            query = query + " WHERE a.pub_date >= %s GROUP BY a.id, c.link ORDER BY a.pub_date DESC"
-            params = (consumer.id, datetime.now(timezone.utc) - timedelta(hours=hours),)
+                SELECT 
+                    a.id, a.uuid, a.title, a.description, a.link, a.pub_date, 
+                    c.link AS channel_link, 
+                    COUNT(l.id) as likes,
+                    EXISTS (
+                        SELECT 1 FROM likes 
+                        WHERE article_id = a.id AND consumer_id = %s
+                    ) AS liked_by_user    
+                FROM article AS a 
+                JOIN channel AS c ON c.id = a.channel_id
+                LEFT JOIN likes AS l ON a.id = l.article_id
+                WHERE a.pub_date >= %s
+                  -- THIS IS THE REVERSED LOGIC:
+                  AND a.channel_id NOT IN (
+                      SELECT channel_id FROM disabled WHERE consumer_id = %s
+                  )
+                GROUP BY a.id, c.link 
+                ORDER BY a.pub_date DESC
+            """
 
-        else:
-            query = query + " WHERE a.channel_id = ANY(%s) AND a.pub_date >= %s GROUP BY a.id, c.link ORDER BY a.pub_date DESC"
-            params = (consumer.id, channel_ids, datetime.now(timezone.utc) - timedelta(hours=hours),)
+        since_date = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+        params = (consumer.id, since_date, consumer.id)
+
         db_result = self._execute(query, params)
+
         if not db_result.success:
             raise InternalError(
-                internal_message=f"Failed getting articles with get_articles method because: {db_result.error_message}"
+                internal_message=f"Failed getting articles: {db_result.error_message}"
             )
 
         try:
             return [Article(**article) for article in db_result.data]
         except Exception as e:
             raise InternalError(
-                internal_message=f"Failed mapping db result to Article objects in method get_articles because: {e}"
+                internal_message=f"Mapping failed: {e}"
             )
 
     def article_uuid_to_id(self, article_uuid: str) -> Optional[int]:

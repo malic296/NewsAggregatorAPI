@@ -75,7 +75,8 @@ class BaseRepository:
             "CREATE TABLE IF NOT EXISTS logging ( id SERIAL PRIMARY KEY, timestamp TIMESTAMPTZ, status TEXT, module TEXT, method TEXT, message TEXT );",
             "CREATE TABLE IF NOT EXISTS password (id SERIAL PRIMARY KEY, hash TEXT NOT NULL);",
             "CREATE TABLE IF NOT EXISTS consumer (id SERIAL PRIMARY KEY, uuid TEXT UNIQUE NOT NULL, username TEXT NOT NULL, email TEXT NOT NULL, password_id integer REFERENCES password(id) ON DELETE CASCADE);",
-            "CREATE TABLE IF NOT EXISTS likes (id SERIAL PRIMARY KEY, consumer_id integer REFERENCES consumer(id) ON DELETE CASCADE, article_id integer REFERENCES article(id) ON DELETE CASCADE, UNIQUE (consumer_id, article_id));"
+            "CREATE TABLE IF NOT EXISTS likes (id SERIAL PRIMARY KEY, consumer_id integer REFERENCES consumer(id) ON DELETE CASCADE, article_id integer REFERENCES article(id) ON DELETE CASCADE, UNIQUE (consumer_id, article_id));",
+            "CREATE TABLE IF NOT EXISTS disabled (id SERIAL PRIMARY KEY, consumer_id integer REFERENCES consumer(id), channel_id integer REFERENCES channel(id) ON DELETE CASCADE);"
         ]
 
         pool = cls._get_pool()
@@ -111,6 +112,35 @@ class BaseRepository:
                         data=data,
                         row_count=count
                     )
+
+        except Exception as e:
+            return DBResult(
+                success = False,
+                error_message=str(e)
+            )
+
+    def _execute_transaction(self, inputs: list[tuple[str, Optional[tuple]]]) -> DBResult:
+        pool = self._get_pool()
+        self._setup_db()
+        try:
+            row_count = 0
+            with pool.connection() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    for input in inputs:
+                        cur.execute(input[0], input[1] or ())
+
+                        if cur.description is not None:
+                            raise InternalError(
+                                internal_message="_execute_transaction are meant for updating only. For reading data use _execute."
+                            )
+
+                        row_count += cur.rowcount
+
+            return DBResult(
+                success=True,
+                data=None,
+                row_count=row_count
+            )
 
         except Exception as e:
             return DBResult(

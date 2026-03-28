@@ -11,11 +11,14 @@ class DatabaseService:
         self.channels= channels
         self.consumers= consumers
 
-    def get_articles(self, consumer: Consumer, hours: int = 1, channel_ids: Optional[list[int]] = None) -> list[Article]:
-        return self.articles.get_articles(consumer=consumer, channel_ids=channel_ids, hours=hours)
+    def get_articles(self, consumer: Consumer, hours: int = 1) -> list[Article]:
+        return self.articles.get_articles(consumer=consumer, hours=hours)
 
-    def get_channels(self) -> list[Channel]:
-        return self.channels.get_channels()
+    def get_channels(self, user_id: int) -> list[Channel]:
+        return self.channels.get_channels(user_id)
+
+    def set_disabled_channels(self, user_id: int, channel_ids: list[int]) -> None:
+        return self.channels.set_disabled_channels(user_id, channel_ids)
 
     def is_username_or_email_used(self, username, email) -> None:
         consumer = self.consumers.get_consumer_by_username(username)
