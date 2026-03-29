@@ -10,3 +10,4 @@ class ArticleDTO(BaseModel):
     channel_link: str
     likes: int
     liked_by_user: bool = False
+

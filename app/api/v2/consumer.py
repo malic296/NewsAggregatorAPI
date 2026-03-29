@@ -5,15 +5,17 @@ from app.dependencies.service_container import get_service_container
 from fastapi.security import OAuth2PasswordRequestForm
 from app.models import Consumer
 from app.core.util import ServiceContainer
-from app.schemas import RegistrationDTO, ResponseDTO, ConsumerDTO
+from app.schemas import RegistrationDTO, ConsumerDTO
 from app.core.errors import InternalError
+from app.schemas.responses import ConsumersResponse, BaseResponse, TokenResponse
+from dataclasses import asdict
 
 consumer_router = APIRouter(
     prefix="/consumers",
     tags=["consumers"]
 )
 
-@consumer_router.post("/register/request_new_registration", response_model=ResponseDTO[None])
+@consumer_router.post("/register/request_new_registration", response_model=BaseResponse)
 def request_new_registration(registration: RegistrationDTO, services: ServiceContainer = Depends(get_service_container)):
     registration.password = services.security.get_password_hash(registration.password)
     services.db.is_username_or_email_used(username=registration.username, email=registration.email)
@@ -26,13 +28,13 @@ def request_new_registration(registration: RegistrationDTO, services: ServiceCon
     services.email.send_verification_code(registration.email, code)
     services.cache.create_pending_registration(registration, code)
 
-    return ResponseDTO(
+    return BaseResponse(
         success=True,
         message="New pending registration created.",
         status_code=200
     )
 
-@consumer_router.post("/register/verify_email")
+@consumer_router.post("/register/verify_email", response_model=TokenResponse)
 def verify_email(email: str, code: int, services: ServiceContainer = Depends(get_service_container)):
     registration = services.cache.provided_code_correct(email, code)
     if registration:
@@ -44,14 +46,14 @@ def verify_email(email: str, code: int, services: ServiceContainer = Depends(get
                 "email": consumer.email
             }
         )
-        return {
-            "access_token": token,
-            "token_type": "Bearer"
-        }
+        return TokenResponse(
+            access_token=token,
+            token_type="Bearer"
+        )
     else:
         raise InternalError(status_code=400, public_message="Expired registration request or Invalid code.")
 
-@consumer_router.post("/login")
+@consumer_router.post("/login", response_model=TokenResponse)
 def login(login: OAuth2PasswordRequestForm = Depends(), services: ServiceContainer = Depends(get_service_container)):
     consumer: Consumer = services.db.get_consumer_by_credential(login.username)
 
@@ -65,18 +67,18 @@ def login(login: OAuth2PasswordRequestForm = Depends(), services: ServiceContain
             "email": consumer.email
         }
     )
-    return {
-        "access_token": token,
-        "token_type": "Bearer"
-    }
+    return TokenResponse(
+        access_token=token,
+        token_type="Bearer"
+    )
 
-@consumer_router.get("/get_currently_logged_consumer", response_model=ResponseDTO[ConsumerDTO])
+@consumer_router.get("/get_currently_logged_consumer", response_model=ConsumersResponse)
 def get_currently_logged_consumer(current_user: Consumer = Depends(get_current_user)):
-    return ResponseDTO(
+    return ConsumersResponse(
         status_code=200,
         success=True,
         message="Current user fetched successfully.",
-        data = current_user
+        consumers = [ConsumerDTO(**asdict(current_user))]
     )
 
 

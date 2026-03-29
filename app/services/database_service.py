@@ -2,7 +2,7 @@ from typing import Optional
 from app.models import Consumer, Channel, Article
 from app.core.errors import InternalError
 from app.repositories import ChannelRepository, ConsumerRepository, ArticleRepository
-from app.schemas import RegistrationDTO
+from app.schemas import RegistrationDTO, ChannelDTO
 from fastapi import status
 
 class DatabaseService:
@@ -17,8 +17,8 @@ class DatabaseService:
     def get_channels(self, user_id: int) -> list[Channel]:
         return self.channels.get_channels(user_id)
 
-    def set_disabled_channels(self, user_id: int, channel_ids: list[int]) -> None:
-        return self.channels.set_disabled_channels(user_id, channel_ids)
+    def set_disabled_channels(self, user_id: int, disabled_channels: list[ChannelDTO]) -> None:
+        return self.channels.set_disabled_channels_by_uuids(user_id, [channel.uuid for channel in disabled_channels])
 
     def is_username_or_email_used(self, username, email) -> None:
         consumer = self.consumers.get_consumer_by_username(username)

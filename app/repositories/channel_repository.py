@@ -2,6 +2,7 @@ from app.models import Channel
 from app.core.errors import InternalError
 from .base_repository import BaseRepository
 from app.interfaces import ChannelInterface
+from app.schemas import ChannelDTO
 
 class ChannelRepository(BaseRepository, ChannelInterface):
     def get_channels(self, user_id: int) -> list[Channel]:
@@ -28,13 +29,17 @@ class ChannelRepository(BaseRepository, ChannelInterface):
                 internal_message=f"Mapping db result data to Channel objects failed in method get_channels because: {e}."
             )
 
-    def set_disabled_channels(self, user_id: int, channel_ids: list[int]) -> None:
+    def set_disabled_channels_by_uuids(self, user_id: int, disabled_uuids: list[str]) -> None:
         inserts = [("DELETE FROM disabled WHERE consumer_id = %s", (user_id,))]
+
         query = """
-            INSERT INTO disabled (consumer_id, channel_id) VALUES (%s, %s) 
+            INSERT INTO disabled (consumer_id, channel_id) 
+            SELECT %s, id
+            FROM channel
+            WHERE uuid = ANY(%s)
         """
-        for id in channel_ids:
-            inserts.append((query, (user_id, id, )))
+
+        inserts.append((query, (user_id, disabled_uuids, )))
 
         result = self._execute_transaction(inserts)
         if not result.success:
