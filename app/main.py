@@ -15,12 +15,13 @@ from app.dependencies.logging import get_logging_handler
 from app.handlers import LoggingHandler
 from app.dependencies.auth import get_rate_limiter
 from app.schemas.responses import BaseResponse
+from app.dependencies.specs import generate_unique_endpoint_id
 
 #USE FOR TESTS
-#app = FastAPI()
+#app = FastAPI(generate_unique_id_function=generate_unique_endpoint_id)
 
 #USE FOR PRODUCTION
-app = FastAPI(dependencies=[Depends(get_rate_limiter())])
+app = FastAPI(generate_unique_id_function=generate_unique_endpoint_id, dependencies=[Depends(get_rate_limiter())])
 
 def create_error_response(message: str, status_code: int) -> JSONResponse:
     response: BaseResponse = BaseResponse(

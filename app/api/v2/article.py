@@ -12,8 +12,8 @@ article_router = APIRouter(
     tags = ["articles"]
 )
 
-@article_router.get("/", response_model=ArticlesResponse)
-def get_articles(hours: int = 1, user = Depends(get_current_user), services: ServiceContainer = Depends(get_service_container)):
+@article_router.get("/read_articles", response_model=ArticlesResponse)
+def read_articles(hours: int = 1, user = Depends(get_current_user), services: ServiceContainer = Depends(get_service_container)):
     articles: list[Article] = services.db.get_articles(consumer=user, hours=hours)
     
     return ArticlesResponse(

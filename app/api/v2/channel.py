@@ -13,8 +13,8 @@ channel_router = APIRouter(
     dependencies=[Depends(get_current_user)]
 )
 
-@channel_router.get("/", response_model=ChannelsResponse)
-def get_available_channels(services: ServiceContainer = Depends(get_service_container), user: Consumer = Depends(get_current_user)):
+@channel_router.get("/read_channels", response_model=ChannelsResponse)
+def read_channels(services: ServiceContainer = Depends(get_service_container), user: Consumer = Depends(get_current_user)):
     channels: list[Channel] = services.cache.get_available_channels()
     if not channels:
         channels: list[Channel] = services.db.get_channels(user.id)
