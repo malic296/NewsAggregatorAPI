@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
-from starlette.status import HTTP_400_BAD_REQUEST
-
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.article import article_router_v1
 from app.api.v1.channel import channel_router_v1
 from app.api.v2.article import article_router
@@ -60,6 +61,28 @@ async def http_exception_handler(request: Request, err: HTTPException):
         message = "You have exceeded the rate limit."
 
     return create_error_response(message = message, status_code = err.status_code)
+
+@app.middleware("http")
+async def log_request(request: Request, call_next):
+    response = await call_next(request)
+
+    try:
+        handler: LoggingHandler = get_logging_handler()
+        log = f"IP: {request.client.host if request.client else 'Unknown'} | {request.method} {request.url.path} | Status: {response.status_code}"
+
+        handler.handle(log)
+    except Exception as err:
+        print(f"CRITICAL: Could not save log because: {str(err)}")
+
+    return response
+
+#app.add_middleware(HTTPSRedirectMiddleware)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST"]
+)
 
 app.include_router(article_router, prefix="/latest")
 app.include_router(channel_router, prefix="/latest")
