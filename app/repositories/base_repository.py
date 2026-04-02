@@ -20,7 +20,7 @@ class BaseRepository:
                 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
                 server = os.environ["SERVER"]
-                user = os.environ["USER"]
+                user = os.environ["DB_USER"]
                 password = os.environ["PASSWORD"]
                 database = os.environ["DATABASE"]
                 port = os.environ["PORT"]
