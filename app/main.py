@@ -78,7 +78,7 @@ async def log_request(request: Request, call_next):
     return response
 
 #app.add_middleware(HTTPSRedirectMiddleware)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1"])
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
