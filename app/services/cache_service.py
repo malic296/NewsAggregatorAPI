@@ -93,13 +93,17 @@ class CacheService:
 
         return None
 
-    def set_available_channels(self, channels: list[Channel]) -> None:
-        channels_key = self._data_key_prefix + "available_channels"
+    def set_available_channels(self, channels: list[Channel], user_id: int) -> None:
+        channels_key = self._data_key_prefix + f"{user_id}:" + "available_channels"
 
         self._client.setex(channels_key, 1800, json.dumps([asdict(channel) for channel in channels]))
 
-    def get_available_channels(self) -> list[Channel]:
-        channels_key = self._data_key_prefix + "available_channels"
+    def invalidate_cache_channels(self, user_id: int) -> None:
+        channels_key = self._data_key_prefix + f"{user_id}:" + "available_channels"
+        self._client.delete(channels_key)
+
+    def get_available_channels(self, user_id: int) -> list[Channel]:
+        channels_key = self._data_key_prefix + f"{user_id}:" + "available_channels"
 
         saved_data = self._client.get(channels_key)
         if saved_data:

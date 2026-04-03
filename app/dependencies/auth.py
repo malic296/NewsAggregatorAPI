@@ -28,6 +28,6 @@ async def ip_identifier(request: Request):
 
 def get_rate_limiter() -> RateLimiter:
     return RateLimiter(
-        limiter=Limiter(Rate(1, Duration.SECOND * 5)),
+        limiter=Limiter(Rate(10, Duration.SECOND * 5)),
         identifier=ip_identifier
     )
