@@ -50,6 +50,9 @@ class DatabaseService:
                 status_code=status.HTTP_400_BAD_REQUEST
             )
         return consumer
+
+    def get_consumer_by_username(self, username: str) -> Optional[Consumer]:
+        return self.consumers.get_consumer_by_username(username)
     
     def get_consumers_hash(self, id: int) -> str:
         hash = self.consumers.get_consumers_hash(id)
@@ -68,4 +71,18 @@ class DatabaseService:
             )
         
         return self.articles.like_article(article_id=article_id, consumer_id=consumer.id)
+
+    def update_consumers_username(self, user_id: int, new_username: str) -> None:
+        consumer = self.consumers.get_consumer_by_username(new_username)
+
+        if consumer:
+            raise InternalError(
+                public_message=f"Provided username already exists.",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        self.consumers.update_consumers_username(user_id=user_id, new_username=new_username)
+
+    def update_consumers_password(self, user_id: int, new_hash: str) -> None:
+        self.consumers.update_consumers_password(user_id=user_id, new_hash=new_hash)
 

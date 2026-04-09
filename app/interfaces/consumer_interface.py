@@ -23,3 +23,11 @@ class ConsumerInterface(ABC):
     @abstractmethod
     def get_consumers_hash(self, uuid: str) -> str:
         ...
+
+    @abstractmethod
+    def update_consumers_username(self, user_id: int, new_username: str) -> Consumer:
+        ...
+
+    @abstractmethod
+    def update_consumers_password(self, user_id: int, new_hash: str) -> Consumer:
+        ...

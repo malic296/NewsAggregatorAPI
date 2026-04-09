@@ -5,7 +5,7 @@ from app.dependencies.service_container import get_service_container
 from fastapi.security import OAuth2PasswordRequestForm
 from app.models import Consumer
 from app.core.util import ServiceContainer
-from app.schemas import RegistrationDTO, ConsumerDTO
+from app.schemas import RegistrationDTO, ConsumerDTO, UpdateCredentialsDTO
 from app.core.errors import InternalError
 from app.schemas.responses import ConsumersResponse, BaseResponse, TokenResponse
 from dataclasses import asdict
@@ -80,6 +80,50 @@ def get_currently_logged_consumer(current_user: Consumer = Depends(get_current_u
         message="Current user fetched successfully.",
         consumers = [ConsumerDTO(**asdict(current_user))]
     )
+
+@consumer_router.put("/update_credentials", response_model=TokenResponse)
+def update_credentials(request: UpdateCredentialsDTO, user: Consumer = Depends(get_current_user), services: ServiceContainer = Depends(get_service_container)):
+    hash = services.db.get_consumers_hash(user.id)
+    try:
+        services.security.verify_password(hash, request.old_password)
+    except InternalError:
+        raise InternalError(
+            status_code=400,
+            public_message="Provided incorrect old password."
+        )
+
+    if request.new_username:
+        consumer = services.db.get_consumer_by_username(request.new_username)
+        if consumer:
+            raise InternalError(
+                status_code=400,
+                public_message="User with provided username already exists."
+            )
+
+        services.db.update_consumers_username(user.id, request.new_username)
+
+    if request.new_password:
+        if services.security.is_password_identical_to_hash(hash, request.new_password):
+            raise InternalError(
+                status_code=400,
+                public_message="Cannot change password with previously used password."
+            )
+        new_hash = services.security.get_password_hash(request.new_password)
+        services.db.update_consumers_password(user.id, new_hash)
+
+    token = services.security.create_access_token(
+        {
+            "uuid": user.uuid,
+            "username": request.new_username if request.new_username else user.username,
+            "email": user.email
+        }
+    )
+
+    return TokenResponse(
+        access_token=token,
+        token_type="Bearer"
+    )
+
 
 
 

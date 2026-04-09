@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import jwt
 from jwt import PyJWTError
 from fastapi import status
+from argon2.exceptions import VerificationError, VerifyMismatchError, InvalidHashError
 
 from app.core.errors import InternalError
 
@@ -41,6 +42,12 @@ class SecurityService:
                 public_message="Invalid login credentials.",
                 status_code=status.HTTP_401_UNAUTHORIZED
             )
+
+    def is_password_identical_to_hash(self, hashed_password: str, plain_password: str) -> bool:
+        try:
+            return self._hasher.verify(hashed_password, plain_password + self._pepper)
+        except (InvalidHashError, VerificationError, VerifyMismatchError):
+            return False
 
     def create_access_token(self, data: dict) -> str:
         to_encode = data.copy()

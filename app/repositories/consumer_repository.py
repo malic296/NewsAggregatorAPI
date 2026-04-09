@@ -126,3 +126,33 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
                 internal_message=f"Method get_consumers_hash returned unexpected DB result. {e}."
             )
         return hash
+
+    def update_consumers_username(self, user_id: int, new_username: str) -> None:
+        sql = """
+            UPDATE consumer
+            SET username = %s
+            WHERE consumer.id = %s
+        """
+        params = (new_username, user_id, )
+
+        result = self._execute(query=sql, params=params)
+
+        if not result.success or result.row_count != 1:
+            raise InternalError(
+                internal_message=f"Method update_consumers_username failed because: {result.error_message}"
+            )
+
+    def update_consumers_password(self, user_id: int, new_hash: str) -> None:
+        sql = """
+              UPDATE password
+              SET hash = %s
+              WHERE password.id = (SELECT password_id FROM consumer WHERE id = %s)
+        """
+        params = (new_hash, user_id, )
+
+        result = self._execute(query=sql, params=params)
+
+        if not result.success or result.row_count != 1:
+            raise InternalError(
+                internal_message=f"Method update_consumers_password failed because: {result.error_message}"
+            )
