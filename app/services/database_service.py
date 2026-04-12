@@ -14,6 +14,9 @@ class DatabaseService:
     def get_articles(self, consumer: Consumer, hours: int = 1) -> list[Article]:
         return self.articles.get_articles(consumer=consumer, hours=hours)
 
+    def get_article(self, uuid: str):
+        return self.articles.get_article(uuid)
+
     def get_channels(self, user_id: int) -> list[Channel]:
         return self.channels.get_channels(user_id)
 

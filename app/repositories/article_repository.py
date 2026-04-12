@@ -2,7 +2,7 @@ from typing import Optional
 from .base_repository import BaseRepository
 from app.interfaces.article_interface import ArticleInterface
 from datetime import datetime, timezone, timedelta
-from app.models import Consumer, Article
+from app.models import Consumer, Article, db_result
 from app.core.errors import InternalError
 
 class ArticleRepository(BaseRepository, ArticleInterface):
@@ -20,7 +20,6 @@ class ArticleRepository(BaseRepository, ArticleInterface):
                 JOIN channel AS c ON c.id = a.channel_id
                 LEFT JOIN likes AS l ON a.id = l.article_id
                 WHERE a.pub_date >= %s
-                  -- THIS IS THE REVERSED LOGIC:
                   AND a.channel_id NOT IN (
                       SELECT channel_id FROM disabled WHERE consumer_id = %s
                   )
@@ -46,6 +45,41 @@ class ArticleRepository(BaseRepository, ArticleInterface):
                 internal_message=f"Mapping failed: {e}"
             )
 
+    def get_article(self, uuid: str) -> Optional[Article]:
+        query = """
+            SELECT 
+                a.id AS id, 
+                a.uuid AS uuid, 
+                a.title AS title, 
+                a.description AS description, 
+                a.link AS link, 
+                a.pub_date as pub_date, 
+                c.link AS channel_link, 
+                COUNT(l.id) AS likes
+            FROM article AS a
+            JOIN channel AS c ON c.id = a.channel_id 
+            LEFT JOIN likes as l ON a.id = l.article_id
+            WHERE a.uuid = %s
+            GROUP BY a.id, c.link
+        """
+        params = (uuid,)
+
+        db_result = self._execute(query, params)
+        if not db_result.success:
+            raise InternalError(
+                internal_message=f"Query created by get_article failed because: {db_result.error_message}"
+            )
+
+        if not db_result.data:
+            return None
+
+        try:
+            return Article(**db_result.data[0])
+        except Exception as e:
+            raise InternalError(
+                internal_message=f"Method article_uuid_to_id failed because invalid data format: {e}."
+            )
+
     def article_uuid_to_id(self, article_uuid: str) -> Optional[int]:
         query = "SELECT id FROM article WHERE uuid = %s"
         db_result = self._execute(query, (article_uuid,))
@@ -62,7 +96,7 @@ class ArticleRepository(BaseRepository, ArticleInterface):
             return db_result.data[0]["id"]
         except Exception as e:
             raise InternalError(
-                internal_message=f"Method article_uuid_to_id failed because invalid data format: {e}."
+                internal_message=f"Method get_article failed because invalid data format: {e}."
             )
 
     def like_article(self, article_id: int, consumer_id: int) -> bool:

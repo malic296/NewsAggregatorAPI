@@ -1,11 +1,12 @@
 from fastapi import Depends, APIRouter, Query
 from app.models import Article
 from app.core.util import ServiceContainer
-from app.schemas.responses import ArticlesResponse
+from app.schemas.responses import ArticlesResponse, ArticleResponse
 from app.dependencies.service_container import get_service_container
 from app.dependencies.auth import get_current_user
 from dataclasses import asdict
 from app.schemas import ArticleDTO
+from typing import Optional
 
 article_router = APIRouter(
     prefix = "/articles",
@@ -22,3 +23,14 @@ def read_articles(hours: int = 1, user = Depends(get_current_user), services: Se
         success=True,
         articles=[ArticleDTO(**asdict(article)) for article in articles]
     )
+
+@article_router.get("/read_article", response_model=ArticleResponse)
+def read_article(uuid: str, services: ServiceContainer = Depends(get_service_container)):
+    article: Optional[Article] = services.db.get_article(uuid)
+    return ArticleResponse(
+        status_code=200,
+        message="Article fetched correctly",
+        success=True,
+        article=ArticleDTO(**asdict(article)) if article else None
+    )
+
