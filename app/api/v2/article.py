@@ -26,11 +26,16 @@ def read_articles(hours: int = 1, user = Depends(get_current_user), services: Se
 
 @article_router.get("/read_article", response_model=ArticleResponse)
 def read_article(uuid: str, services: ServiceContainer = Depends(get_service_container)):
-    article: Optional[Article] = services.db.get_article(uuid)
+    article: Optional[Article] = services.cache.get_article(uuid)
+    if not article:
+        article: Optional[Article] = services.db.get_article(uuid)
+        if article:
+            services.cache.set_article(article)
+
     return ArticleResponse(
-        status_code=200,
-        message="Article fetched correctly",
-        success=True,
+        status_code=200 if article else 404,
+        message="Article fetched correctly" if article else "No article found for provided uuid.",
+        success=True if article else False,
         article=ArticleDTO(**asdict(article)) if article else None
     )
 

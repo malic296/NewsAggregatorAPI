@@ -1,6 +1,6 @@
 from json import JSONDecodeError
 from typing import Optional
-from app.models import Channel
+from app.models import Channel, Article
 from app.core.errors import InternalError
 from app.schemas import RegistrationDTO
 from redis import Redis
@@ -96,7 +96,7 @@ class CacheService:
     def set_available_channels(self, channels: list[Channel], user_id: int) -> None:
         channels_key = self._data_key_prefix + f"{user_id}:" + "available_channels"
 
-        self._client.setex(channels_key, 1800, json.dumps([asdict(channel) for channel in channels]))
+        self._client.setex(channels_key, 600, json.dumps([asdict(channel) for channel in channels]))
 
     def invalidate_cache_channels(self, user_id: int) -> None:
         channels_key = self._data_key_prefix + f"{user_id}:" + "available_channels"
@@ -122,6 +122,37 @@ class CacheService:
             return channels
         
         return []
+
+    def get_article(self, uuid: str) -> Optional[Article]:
+        article_key = self._data_key_prefix + uuid
+        saved_data = self._client.get(article_key)
+        if saved_data:
+            try:
+                json_data = json.loads(saved_data)
+                article: Article = Article(**json_data)
+                return article
+            except (ConnectionError, TimeoutError):
+                return None
+            except Exception as e:
+                raise InternalError(
+                    internal_message=f"Failed loading Article from cache even though article was found because: {e}"
+                )
+        else:
+            return None
+
+    def set_article(self, article: Article) -> Optional[Article]:
+        article_key = self._data_key_prefix + article.uuid
+        try:
+            data = json.dumps(asdict(article))
+            self._client.setex(article_key, 600, data)
+
+        except (ConnectionError, TimeoutError) as e:
+            return None
+        except Exception as e:
+            raise InternalError(
+                internal_message=f"Serialization failed for article because: {e}"
+            )
+
     
 
 
