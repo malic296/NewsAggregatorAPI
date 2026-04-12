@@ -143,7 +143,9 @@ class CacheService:
     def set_article(self, article: Article) -> Optional[Article]:
         article_key = self._data_key_prefix + article.uuid
         try:
-            data = json.dumps(asdict(article))
+            article_dict = asdict(article)
+            article_dict["pub_date"] = article_dict["pub_date"].isoformat()
+            data = json.dumps(article_dict)
             self._client.setex(article_key, 600, data)
 
         except (ConnectionError, TimeoutError) as e:
