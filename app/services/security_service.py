@@ -34,14 +34,13 @@ class SecurityService:
         password = password + self._pepper
         return self._hasher.hash(password)
 
-    def verify_password(self, hashed_password: str, plain_password: str) -> None:
+    def verify_password(self, hashed_password: str, plain_password: str) -> bool:
         try:
             self._hasher.verify(hashed_password, plain_password + self._pepper)
         except Exception:
-            raise InternalError(
-                public_message="Invalid login credentials.",
-                status_code=status.HTTP_401_UNAUTHORIZED
-            )
+            return False
+
+        return True
 
     def is_password_identical_to_hash(self, hashed_password: str, plain_password: str) -> bool:
         try:

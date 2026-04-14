@@ -57,7 +57,7 @@ async def global_exception_handler(request: Request, err: Exception):
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, err: HTTPException):
-    message = err.detail
+    message = err.detail if err.detail else 'Unexpected HTTP error'
     if err.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
         message = "You have exceeded the rate limit."
 

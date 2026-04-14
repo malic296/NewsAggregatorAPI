@@ -9,6 +9,7 @@ from app.schemas import RegistrationDTO, ConsumerDTO, UpdateCredentialsDTO
 from app.core.errors import InternalError
 from app.schemas.responses import ConsumersResponse, BaseResponse, TokenResponse
 from dataclasses import asdict
+from fastapi import status
 
 consumer_router = APIRouter(
     prefix="/consumers",
@@ -18,7 +19,19 @@ consumer_router = APIRouter(
 @consumer_router.post("/register/request_new_registration", response_model=BaseResponse)
 def request_new_registration(registration: RegistrationDTO, services: ServiceContainer = Depends(get_service_container)):
     registration.password = services.security.get_password_hash(registration.password)
-    services.db.is_username_or_email_used(username=registration.username, email=registration.email)
+    if services.db.is_email_used(email = registration.email):
+        return BaseResponse(
+            success=False,
+            message="Email already used. Please use another one.",
+            status_code=409
+        )
+
+    if services.db.is_username_used(username=registration.username):
+        return BaseResponse(
+            success=False,
+            message="Username already used. Please use another one.",
+            status_code=409
+        )
 
     is_pending = services.cache.is_registration_pending(registration)
     if is_pending:
@@ -51,14 +64,32 @@ def verify_email(email: str, code: int, services: ServiceContainer = Depends(get
             token_type="Bearer"
         )
     else:
-        raise InternalError(status_code=400, public_message="Expired registration request or Invalid code.")
+        raise InternalError(
+            status_code=422,
+            public_message="Expired registration request or Invalid code."
+        )
 
 @consumer_router.post("/login", response_model=TokenResponse)
 def login(login: OAuth2PasswordRequestForm = Depends(), services: ServiceContainer = Depends(get_service_container)):
-    consumer: Consumer = services.db.get_consumer_by_credential(login.username)
+    consumer = services.db.get_consumer_by_credential(login.username)
+    if not consumer:
+        raise InternalError(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            public_message="Invalid login details"
+        )
 
     saved_hash = services.db.get_consumers_hash(consumer.id)
-    services.security.verify_password(saved_hash, login.password)
+
+    if not saved_hash:
+        raise InternalError(
+            internal_message="Consumer found without password."
+        )
+
+    if not services.security.verify_password(saved_hash, login.password):
+        raise InternalError(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            public_message="Invalid login details"
+        )
 
     token = services.security.create_access_token(
         {

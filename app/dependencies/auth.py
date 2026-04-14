@@ -18,7 +18,14 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], services: Se
             status_code=status.HTTP_401_UNAUTHORIZED
         )
     
-    return services.db.get_consumer_by_credential(payload["username"])
+    user = services.db.get_consumer_by_credential(payload["username"])
+    if not user:
+        raise InternalError(
+            public_message="You need to login or register with a valid user first to use this endpoint.",
+            status_code=status.HTTP_401_UNAUTHORIZED
+        )
+
+    return user
 
 async def ip_identifier(request: Request):
     forwarded = request.headers.get("X-Forwarded-For")
