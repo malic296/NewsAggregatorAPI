@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
@@ -7,8 +8,9 @@ import jwt
 from jwt import PyJWTError
 from fastapi import status
 from argon2.exceptions import VerificationError, VerifyMismatchError, InvalidHashError
-
 from app.core.errors import InternalError
+from app.models import Consumer
+
 
 class SecurityService:
     def __init__(self):
@@ -48,7 +50,9 @@ class SecurityService:
         except (InvalidHashError, VerificationError, VerifyMismatchError):
             return False
 
-    def create_access_token(self, data: dict) -> str:
+    def create_access_token(self, consumer: Consumer) -> str:
+        data = asdict(consumer)
+        data.pop("id", None)
         to_encode = data.copy()
         expire = datetime.now(timezone.utc) + timedelta(minutes=30)
         to_encode.update({"exp": expire})

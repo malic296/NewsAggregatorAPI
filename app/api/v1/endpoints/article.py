@@ -1,9 +1,7 @@
-from fastapi import Depends, APIRouter, Query
+from fastapi import Depends, APIRouter
 from app.models import Article
-from app.core.util import ServiceContainer
 from app.schemas.responses import ArticlesResponse, ArticleResponse
-from app.dependencies.service_container import get_service_container
-from app.dependencies.auth import get_current_user
+from app.api.dependencies import get_database_service, get_current_user
 from dataclasses import asdict
 from app.schemas import ArticleDTO
 from typing import Optional
@@ -14,8 +12,8 @@ article_router = APIRouter(
 )
 
 @article_router.get("/read_articles", response_model=ArticlesResponse)
-def read_articles(hours: int = 1, user = Depends(get_current_user), services: ServiceContainer = Depends(get_service_container)):
-    articles: list[Article] = services.db.get_articles(consumer=user, hours=hours)
+def read_articles(hours: int = 1, user = Depends(get_current_user), db = Depends(get_database_service)):
+    articles: list[Article] = db.get_articles(consumer=user, hours=hours)
     
     return ArticlesResponse(
         status_code=200,
@@ -25,12 +23,8 @@ def read_articles(hours: int = 1, user = Depends(get_current_user), services: Se
     )
 
 @article_router.get("/read_article", response_model=ArticleResponse)
-def read_article(uuid: str, services: ServiceContainer = Depends(get_service_container)):
-    article: Optional[Article] = services.cache.get_article(uuid)
-    if not article:
-        article: Optional[Article] = services.db.get_article(uuid)
-        if article:
-            services.cache.set_article(article)
+def read_article(uuid: str, db = Depends(get_database_service)):
+    article: Optional[Article] = db.get_article(uuid)
 
     return ArticleResponse(
         status_code=200 if article else 404,
