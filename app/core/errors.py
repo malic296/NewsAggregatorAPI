@@ -11,8 +11,7 @@ class AuthenticationRequiredError(AppError):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            public_message="You need to login or register first.",
-            internal_message="Someone without authentication tried to call authenticated endpoint."
+            public_message="You need to login or register first."
         )
 
 class InvalidCredentialsError(AppError):
@@ -78,4 +77,36 @@ class DependencyUnavailableError(AppError):
             internal_message=f"Dependency {dependency if dependency else ""} unavailable.",
             public_message="Server failed because of external error. Try again later."
         )
+
+class EnvVarNotFoundError(AppError):
+    def __init__(self, variable: str = None):
+        super().__init__(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            internal_message=f"Environment variables{": " + variable if variable else ""} not set correctly.",
+            public_message="Server failed because of internal error. Try again later."
+        )
+
+class MappingError(AppError):
+    def __init__(self, mapping_error: str, method: str):
+        super().__init__(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            internal_message=f"Method {method} failed because of mapping error: {mapping_error}",
+            public_message="Server failed because of internal error. Try again later."
+        )
+
+class DatabaseError(AppError):
+    def __init__(self, message: str, method: str):
+        super().__init__(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            internal_message=f"Query execution failed for method: {method}. Error message: {message}",
+            public_message="Server failed because of internal error. Try again later."
+        )
+
+class RateLimitExceededError(AppError):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            public_message="Too many requests. Try again in a short moment."
+        )
+
 

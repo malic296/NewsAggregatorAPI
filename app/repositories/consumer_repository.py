@@ -2,7 +2,7 @@ from typing import Optional
 from .base_repository import BaseRepository
 from app.interfaces import ConsumerInterface
 from app.models import Consumer
-from app.core.errors import InternalError
+from app.core.errors import DatabaseError, MappingError
 from app.schemas import RegistrationDTO
 import uuid
 
@@ -28,54 +28,48 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
             registration.email,
             str(uuid.uuid4())
         )
-        result = self._execute(query, params)
-        if not result.success:
-            raise InternalError(
-                internal_message=f"Register query failed in register_consumer because: {result.error_message}"
+        db_result = self._execute(query, params)
+        if not db_result.success:
+            raise DatabaseError(
+                message=db_result.error_message if db_result.error_message else "Unknown error",
+                method="register_consumer"
             )
         try:
-            consumer: Consumer = Consumer(**result.data[0])
+            return Consumer(**db_result.data[0])
         except Exception as e:
-            raise InternalError(
-                internal_message=f"Failed mapping of db result data to consumer object in method register_consumer because: {e}"
-            )
-        return consumer
+            raise MappingError(mapping_error=str(e), method="register_consumer")
 
     def get_consumer_by_email(self, email: str) -> Optional[Consumer]:
         query = "SELECT c.id AS id, c.uuid AS uuid, c.username AS username, c.email AS email FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.email = %s"
         params = (email,)
-        result = self._execute(query, params)
-        if not result.success: 
-            raise InternalError(
-                internal_message=f"Method get_consumer_by_email failed because: {result.error_message}"
+        db_result = self._execute(query, params)
+        if not db_result.success:
+            raise DatabaseError(
+                message=db_result.error_message if db_result.error_message else "Unknown error",
+                method="get_consumer_by_email"
             )
         
-        if result.data:
+        if db_result.data:
             try:
-                consumer: Consumer = Consumer(**result.data[0])
+                return Consumer(**db_result.data[0])
             except Exception as e:
-                raise InternalError(
-                    internal_message=f"Failed mapping of db result data to consumer object in method get_consumer_by_email because: {e}"
-                )
-            return consumer
+                raise MappingError(mapping_error=str(e), method="get_consumer_by_email")
         return None
 
     def get_consumer_by_username(self, username: str) -> Optional[Consumer]:
         query = "SELECT c.id AS id, c.uuid AS uuid, c.username AS username, c.email AS email FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.username = %s"
         params = (username,)
-        result = self._execute(query, params)
-        if not result.success: 
-            raise InternalError(
-                internal_message=f"Method get_consumer_by_username failed because: {result.error_message}"
+        db_result = self._execute(query, params)
+        if not db_result.success:
+            raise DatabaseError(
+                message=db_result.error_message if db_result.error_message else "Unknown error",
+                method="get_consumer_by_username"
             )
-        if result.data:
+        if db_result.data:
             try:
-                consumer: Consumer = Consumer(**result.data[0])
+                return Consumer(**db_result.data[0])
             except Exception as e:
-                raise InternalError(
-                    internal_message=f"Failed mapping of db result data to consumer object in method get_consumer_by_email because: {e}"
-                )
-            return consumer
+                raise MappingError(mapping_error=str(e), method="get_consumer_by_username")
 
         return None
     
@@ -83,19 +77,17 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
         query = "SELECT c.id AS id, c.uuid AS uuid, c.username AS username, c.email AS email FROM consumer AS c JOIN password as p ON c.password_id = p.id WHERE c.uuid = %s"
         params = (consumer_uuid, )
 
-        result = self._execute(query, params)
-        if not result.success: 
-            raise InternalError(
-                internal_message=f"Method get_consumer_by_uuid failed because: {result.error_message}"
+        db_result = self._execute(query, params)
+        if not db_result.success:
+            raise DatabaseError(
+                message=db_result.error_message if db_result.error_message else "Unknown error",
+                method="get_consumer_by_uuid"
             )
 
         try:
-            consumer: Consumer = Consumer(**result.data[0])
+            return Consumer(**db_result.data[0])
         except Exception as e:
-            raise InternalError(
-                internal_message=f"Failed mapping of db result data to consumer object in method get_consumer_by_email because: {e}"
-            )
-        return consumer
+            raise MappingError(mapping_error=str(e), method="get_consumer_by_uuid")
     
     def get_consumers_hash(self, id: int) -> Optional[str]:
         query = """
@@ -110,22 +102,20 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
         """
         params = (id, )
 
-        result = self._execute(query=query, params=params)
-        if not result.success: 
-            raise InternalError(
-                internal_message=f"Failed getting saved hash from DB by users ID {id} because: {result.error_message}"
+        db_result = self._execute(query=query, params=params)
+        if not db_result.success:
+            raise DatabaseError(
+                message=db_result.error_message if db_result.error_message else "Unknown error",
+                method="get_consumers_hash"
             )
 
-        if not result.data:
+        if not db_result.data:
             return None
 
         try:
-            hash: str = result.data[0]["hash"]
+            return db_result.data[0]["hash"]
         except Exception as e:
-            raise InternalError(
-                internal_message=f"Method get_consumers_hash returned unexpected DB result. {e}."
-            )
-        return hash
+            raise MappingError(mapping_error=str(e), method="get_consumers_hash")
 
     def update_consumers_username(self, user_id: int, new_username: str) -> None:
         sql = """
@@ -135,11 +125,12 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
         """
         params = (new_username, user_id, )
 
-        result = self._execute(query=sql, params=params)
+        db_result = self._execute(query=sql, params=params)
 
-        if not result.success or result.row_count != 1:
-            raise InternalError(
-                internal_message=f"Method update_consumers_username failed because: {result.error_message}"
+        if not db_result.success or db_result.row_count != 1:
+            raise DatabaseError(
+                message=db_result.error_message if db_result.error_message else "Username has not been changed.",
+                method="update_consumers_username"
             )
 
     def update_consumers_password(self, user_id: int, new_hash: str) -> None:
@@ -150,9 +141,10 @@ class ConsumerRepository(BaseRepository, ConsumerInterface):
         """
         params = (new_hash, user_id, )
 
-        result = self._execute(query=sql, params=params)
+        db_result = self._execute(query=sql, params=params)
 
-        if not result.success or result.row_count != 1:
-            raise InternalError(
-                internal_message=f"Method update_consumers_password failed because: {result.error_message}"
+        if not db_result.success or db_result.row_count != 1:
+            raise DatabaseError(
+                message=db_result.error_message if db_result.error_message else "Password has not been updated.",
+                method="update_consumers_password"
             )

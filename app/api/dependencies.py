@@ -6,13 +6,13 @@ from fastapi.security import OAuth2PasswordBearer
 from app.handlers import LoggingHandler, DatabaseLogger, FileLogger
 from app.repositories import ArticleRepository, ChannelRepository, ConsumerRepository, LoggingRepository
 from app.services import CacheService, DatabaseService, SecurityService, EmailService, LoggingService
-from app.core.errors import InternalError
 from app.models import Consumer
+from app.core.errors import AuthenticationRequiredError
 
-def get_logging_handler(path: Optional[Path] = None, repo: Optional[LoggingRepository] = None) -> LoggingHandler:
+def get_logging_handler(path: Optional[Path] = None) -> LoggingHandler:
     log_service: LoggingService = LoggingService(
         file_path = path if path else Path(__file__).parent.parent.parent / "api_errors.log",
-        logging_repository = repo if repo else LoggingRepository()
+        logging_repository = LoggingRepository()
     )
 
     db_logger = DatabaseLogger(log_service)
@@ -44,16 +44,13 @@ def get_current_user(token: Annotated[str, Depends(OAuth2PasswordBearer(tokenUrl
 
     payload = security.decode_access_token(token)
     if payload is None:
-        raise InternalError(
-            public_message="You need to login or register first to use this endpoint.",
-            status_code=status.HTTP_401_UNAUTHORIZED
-        )
+        raise AuthenticationRequiredError()
 
     user = db.get_consumer_by_credential(payload["username"])
     if not user:
-        raise InternalError(
-            public_message="You need to login or register with a valid user first to use this endpoint.",
-            status_code=status.HTTP_401_UNAUTHORIZED
-        )
+        raise AuthenticationRequiredError()
 
     return user
+
+def get_cache_service():
+    return CacheService()

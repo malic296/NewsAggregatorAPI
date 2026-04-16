@@ -2,8 +2,8 @@ from typing import Optional
 from .base_repository import BaseRepository
 from app.interfaces.article_interface import ArticleInterface
 from datetime import datetime, timezone, timedelta
-from app.models import Consumer, Article, db_result
-from app.core.errors import InternalError
+from app.models import Consumer, Article
+from app.core.errors import MappingError, DatabaseError
 
 class ArticleRepository(BaseRepository, ArticleInterface):
     def get_articles(self, consumer: Consumer, hours: int = 1) -> list[Article]:
@@ -34,16 +34,15 @@ class ArticleRepository(BaseRepository, ArticleInterface):
         db_result = self._execute(query, params)
 
         if not db_result.success:
-            raise InternalError(
-                internal_message=f"Failed getting articles: {db_result.error_message}"
+            raise DatabaseError(
+                message=db_result.error_message if db_result.error_message else "Unknown error",
+                method="get_articles"
             )
 
         try:
             return [Article(**article) for article in db_result.data]
         except Exception as e:
-            raise InternalError(
-                internal_message=f"Mapping failed: {e}"
-            )
+            raise MappingError(mapping_error=str(e), method="get_articles")
 
     def get_article(self, uuid: str) -> Optional[Article]:
         query = """
@@ -66,8 +65,9 @@ class ArticleRepository(BaseRepository, ArticleInterface):
 
         db_result = self._execute(query, params)
         if not db_result.success:
-            raise InternalError(
-                internal_message=f"Query created by get_article failed because: {db_result.error_message}"
+            raise DatabaseError(
+                message=db_result.error_message if db_result.error_message else "Unknown error",
+                method="get_article"
             )
 
         if not db_result.data:
@@ -76,17 +76,16 @@ class ArticleRepository(BaseRepository, ArticleInterface):
         try:
             return Article(**db_result.data[0])
         except Exception as e:
-            raise InternalError(
-                internal_message=f"Method article_uuid_to_id failed because invalid data format: {e}."
-            )
+            raise MappingError(mapping_error=str(e), method="get_article")
 
     def article_uuid_to_id(self, article_uuid: str) -> Optional[int]:
         query = "SELECT id FROM article WHERE uuid = %s"
         db_result = self._execute(query, (article_uuid,))
 
         if not db_result.success:
-            raise InternalError(
-                internal_message=f"Query created by article_uuid_to_id failed because: {db_result.error_message}"
+            raise DatabaseError(
+                message=db_result.error_message if db_result.error_message else "Unknown error",
+                method="article_uuid_to_id"
             )
 
         if not db_result.data:
@@ -95,9 +94,7 @@ class ArticleRepository(BaseRepository, ArticleInterface):
         try:
             return db_result.data[0]["id"]
         except Exception as e:
-            raise InternalError(
-                internal_message=f"Method get_article failed because invalid data format: {e}."
-            )
+            raise MappingError(mapping_error=str(e), method="article_uuid_to_id")
 
     def like_article(self, article_id: int, consumer_id: int) -> bool:
         query = """
@@ -106,8 +103,9 @@ class ArticleRepository(BaseRepository, ArticleInterface):
         params = (article_id, consumer_id,)
         db_result = self._execute(query, params)
         if not db_result.success:
-            raise InternalError(
-                internal_message=f"Method like_article failed initial select because: {db_result.error_message}."
+            raise DatabaseError(
+                message=db_result.error_message if db_result.error_message else "Unknown error",
+                method="like_article"
             )
 
         if not db_result.data:
@@ -120,13 +118,15 @@ class ArticleRepository(BaseRepository, ArticleInterface):
         db_result = self._execute(query, params)
 
         if not db_result.success:
-            raise InternalError(
-                internal_message=f"Method like_article failed like logic because: {db_result.error_message}."
+            raise DatabaseError(
+                message=db_result.error_message if db_result.error_message else "Unknown error",
+                method="like_article"
             )
 
         if not db_result.row_count > 0:
-            raise InternalError(
-                internal_message=f"Method like_article did not change any rows."
+            raise DatabaseError(
+                message="No rows were changed when liking an article.",
+                method="like_article"
             )
 
         return liked

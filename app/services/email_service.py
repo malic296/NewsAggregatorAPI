@@ -1,23 +1,10 @@
-import os
-from dotenv import load_dotenv
-from pathlib import Path
-from app.core.errors import InternalError
+from app.core.errors import DependencyUnavailableError
+from app.core.settings import settings
 import resend
 
 class EmailService:
     def __init__(self):
-        try:
-            load_dotenv(Path(__file__).parent.parent.parent / '.env')
-            resend.api_key = os.environ['RESEND_API_KEY']
-
-        except KeyError as e:
-            raise InternalError(
-                internal_message=f"Failed reading env vars for email service because of missing key: {e}"
-            )
-        except Exception as e:
-            raise InternalError(
-                internal_message=f"Email service init failed because of unexpected error: {e}"
-            )
+        resend.api_key = settings.keys.RESEND
 
     def send_verification_code(self, email: str, code: int) -> None:
         html = f"""
@@ -44,7 +31,5 @@ class EmailService:
 
         try:
             resend.Emails.send(params)
-        except Exception as e:
-            raise InternalError(
-                internal_message=f"Failed sending verification code to email: {email} because: {e}"
-            )
+        except Exception:
+            raise DependencyUnavailableError(dependency="RESEND")

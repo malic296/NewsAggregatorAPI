@@ -1,36 +1,18 @@
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
-import os
-from pathlib import Path
 from argon2 import PasswordHasher
-from dotenv import load_dotenv
 import jwt
 from jwt import PyJWTError
-from fastapi import status
 from argon2.exceptions import VerificationError, VerifyMismatchError, InvalidHashError
-from app.core.errors import InternalError
 from app.models import Consumer
-
+from app.core.settings import settings
 
 class SecurityService:
     def __init__(self):
         self._hasher = PasswordHasher()
-        try:
-            load_dotenv(Path(__file__).parent.parent.parent / ".env")
-
-            self._pepper = os.environ["PEPPER"]
-            self._secret_key = os.environ["JWT_SECRET"]
-            self._algorithm = "HS256"
-
-        except KeyError as e:
-            raise InternalError(
-                internal_message=f"Failed reading env vars for SecurityService because of missing key: {e}"
-            )
-        except Exception as e:
-            raise InternalError(
-                internal_message=f"SecurityService init failed because of unexpected error: {e}"
-            )
-
+        self._pepper = settings.secrets.PEPPER
+        self._secret_key = settings.secrets.JWT
+        self._algorithm = "HS256"
 
     def get_password_hash(self, password: str) -> str:
         password = password + self._pepper
@@ -39,7 +21,7 @@ class SecurityService:
     def verify_password(self, hashed_password: str, plain_password: str) -> bool:
         try:
             self._hasher.verify(hashed_password, plain_password + self._pepper)
-        except Exception:
+        except (InvalidHashError, VerificationError, VerifyMismatchError):
             return False
 
         return True

@@ -1,6 +1,6 @@
 from typing import Optional
 from app.models import Consumer, Channel, Article
-from app.core.errors import InternalError
+from app.core.errors import EmailAlreadyUsedError, UsernameAlreadyUsedError, RegistrationExpiredError, ArticleNotFoundError
 from app.repositories import ChannelRepository, ConsumerRepository, ArticleRepository
 from app.schemas import RegistrationDTO, ChannelDTO
 from fastapi import status
@@ -55,17 +55,11 @@ class DatabaseService:
     def validate_new_registration(self, registration: RegistrationDTO) -> None:
         consumer = self.consumers.get_consumer_by_email(email=registration.email)
         if consumer:
-            raise InternalError(
-                public_message=f"Provided email is already used.",
-                status_code=status.HTTP_409_CONFLICT
-            )
+            raise EmailAlreadyUsedError()
 
         consumer = self.consumers.get_consumer_by_username(username=registration.username)
         if consumer:
-            raise InternalError(
-                public_message=f"Provided username is already used.",
-                status_code=status.HTTP_409_CONFLICT
-            )
+            raise UsernameAlreadyUsedError()
 
     def create_new_registration(self, registration: RegistrationDTO, code: int) -> None:
         is_pending = self.cache.is_registration_pending(registration)
@@ -79,10 +73,7 @@ class DatabaseService:
         if registration:
             return self.consumers.register_consumer(registration)
         else:
-            raise InternalError(
-                status_code=422,
-                public_message="Expired registration request or Invalid code."
-            )
+            raise RegistrationExpiredError()
     
     def get_consumer_by_credential(self, credential: str) -> Optional[Consumer]:
         consumer = self.consumers.get_consumer_by_username(credential)
@@ -100,10 +91,7 @@ class DatabaseService:
     def like_article(self, article_uuid: str, consumer: Consumer) -> bool:
         article_id = self.articles.article_uuid_to_id(article_uuid)
         if not article_id:
-            raise InternalError(
-                public_message=f"No article found for provided uuid: {article_uuid}",
-                status_code=status.HTTP_400_BAD_REQUEST
-            )
+            raise ArticleNotFoundError()
         
         return self.articles.like_article(article_id=article_id, consumer_id=consumer.id)
 

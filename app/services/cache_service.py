@@ -1,17 +1,14 @@
-from json import JSONDecodeError
 from typing import Optional
 from app.models import Channel, Article
-from app.core.errors import InternalError
+from app.core.errors import DependencyUnavailableError, MappingError
 from app.schemas import RegistrationDTO
 from redis import Redis
 from redis.exceptions import RedisError
-from dotenv import load_dotenv
-from pathlib import Path
-import os
 import json
 from dataclasses import asdict
 from redis.retry import Retry
 from redis.backoff import NoBackoff
+from app.core.settings import settings
 
 class CacheService:
     def __init__(self):
@@ -19,16 +16,10 @@ class CacheService:
         self._data_key_prefix = "data:"
 
         try:
-            load_dotenv(Path(__file__).parent.parent.parent / ".env")
-
-            host = os.environ["REDIS_HOST"]
-            port = int(os.environ["REDIS_PORT"])
-            db = int(os.environ["REDIS_DB"])
-
             self._client = Redis(
-                host=host,
-                port=port,
-                db=db,
+                host=settings.cache.HOST,
+                port=settings.cache.PORT,
+                db=settings.cache.DATABASE,
                 decode_responses=True,
                 retry=Retry(NoBackoff(), 0),
                 socket_connect_timeout=2.0
@@ -36,26 +27,14 @@ class CacheService:
 
             self._client.ping()
 
-        except KeyError as e:
-            raise InternalError(
-                internal_message=f"Failed reading env vars for CacheService because of missing key: {e}"
-            )
-
         except RedisError as e:
-            raise InternalError(
-                internal_message=f"Valkey failed in cache service init because: {e}"
-            )
-
-        except Exception as e:
-            raise InternalError(
-                internal_message=f"CacheService init failed because of unexpected error: {e}"
-            )
+            raise DependencyUnavailableError(dependency="VALKEY")
 
     def is_registration_pending(self, registration: RegistrationDTO) -> bool:
         email_key = self._reg_key_prefix + registration.email
 
-        exists_count = self._client.exists(email_key)
-        return exists_count > 0
+        data = self._client.get(email_key)
+        return data is not None
 
     def delete_registration_from_pending(self, registration: RegistrationDTO) -> None:
         email_key = self._reg_key_prefix + registration.email
@@ -83,13 +62,7 @@ class CacheService:
 
             if int(json_data["code"]) == code:
                 self._client.delete(email_key)
-                try:
-                    registration: RegistrationDTO = RegistrationDTO(**json_data["data"])
-                except Exception as e:
-                    raise InternalError(
-                        internal_message=f"Failed valkey data mapping to RegistrationDTO object in method provided_code_correct because: {e}"
-                    )
-                return registration
+                return RegistrationDTO(**json_data["data"])
 
         return None
 
@@ -107,19 +80,11 @@ class CacheService:
 
         saved_data = self._client.get(channels_key)
         if saved_data:
+            json_data = json.loads(saved_data)
             try:
-                json_data = json.loads(saved_data)
-                channels: list[Channel] = [Channel(**channel) for channel in json_data]
-
-            except JSONDecodeError as e:
-                raise InternalError(
-                    internal_message=f"Failed loading channels data from valkey to json in method get_available_channels because: {e}"
-                )
+                return [Channel(**channel) for channel in json_data]
             except Exception as e:
-                raise InternalError(
-                    internal_message=f"Failed valkey data mapping to Channel objects in method get_available_channels because: {e}"
-                )
-            return channels
+                raise MappingError(mapping_error=str(e), method="get_available_channels")
         
         return []
 
@@ -127,16 +92,11 @@ class CacheService:
         article_key = self._data_key_prefix + uuid
         saved_data = self._client.get(article_key)
         if saved_data:
+            json_data = json.loads(saved_data)
             try:
-                json_data = json.loads(saved_data)
-                article: Article = Article(**json_data)
-                return article
-            except (ConnectionError, TimeoutError):
-                return None
+                return Article(**json_data)
             except Exception as e:
-                raise InternalError(
-                    internal_message=f"Failed loading Article from cache even though article was found because: {e}"
-                )
+                raise MappingError(mapping_error=str(e), method="get_article")
         else:
             return None
 
@@ -148,13 +108,15 @@ class CacheService:
             data = json.dumps(article_dict)
             self._client.setex(article_key, 600, data)
 
-        except (ConnectionError, TimeoutError) as e:
-            return None
         except Exception as e:
-            raise InternalError(
-                internal_message=f"Serialization failed for article because: {e}"
-            )
+            raise MappingError(mapping_error=str(e), method="set_article")
 
-    
+    def can_request_go_through(self, user_key: str) -> bool:
+        requests = self._client.incr(user_key)
+
+        if requests == 1:
+            self._client.expire(user_key, 5)
+
+        return requests <= 3
 
 

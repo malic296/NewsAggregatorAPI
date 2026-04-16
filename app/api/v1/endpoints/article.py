@@ -5,6 +5,7 @@ from app.api.dependencies import get_database_service, get_current_user
 from dataclasses import asdict
 from app.schemas import ArticleDTO
 from typing import Optional
+from app.core.errors import ArticleNotFoundError
 
 article_router = APIRouter(
     prefix = "/articles",
@@ -25,11 +26,13 @@ def read_articles(hours: int = 1, user = Depends(get_current_user), db = Depends
 @article_router.get("/read_article", response_model=ArticleResponse)
 def read_article(uuid: str, db = Depends(get_database_service)):
     article: Optional[Article] = db.get_article(uuid)
+    if not article:
+        raise ArticleNotFoundError()
 
     return ArticleResponse(
-        status_code=200 if article else 404,
-        message="Article fetched correctly" if article else "No article found for provided uuid.",
-        success=True if article else False,
-        article=ArticleDTO(**asdict(article)) if article else None
+        status_code=200,
+        message="Article fetched correctly",
+        success=True,
+        article=ArticleDTO(**asdict(article))
     )
 

@@ -1,12 +1,10 @@
 import atexit
-import os
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 from typing import Optional
-from dotenv import load_dotenv
-from pathlib import Path
 from app.models import DBResult
-from app.core.errors import InternalError
+from app.core.errors import DatabaseError, EnvVarNotFoundError
+from app.core.settings import settings
 
 class BaseRepository:
     _db_init: bool = False
@@ -14,28 +12,9 @@ class BaseRepository:
     _conn_string: Optional[str] = None
 
     @classmethod
-    def _read_env_vars(cls) -> None:
+    def _load_conn_string(cls) -> None:
         if not cls._conn_string:
-            try:
-                load_dotenv(Path(__file__).parent.parent.parent / ".env")
-
-                server = os.environ["SERVER"]
-                user = os.environ["DB_USER"]
-                password = os.environ["PASSWORD"]
-                database = os.environ["DATABASE"]
-                port = os.environ["PORT"]
-                address = os.environ["ADDRESS"]
-
-                cls._conn_string = f"{server}://{user}:{password}@{address}:{port}/{database}"
-
-            except KeyError as e:
-                raise InternalError(
-                    internal_message=f"Missing environmental variable: {e}"
-                )
-            except Exception as e:
-                raise InternalError(
-                    internal_message=f"Loading env vars in base repository failed unexpectedly: {e}"
-                )
+            cls._conn_string = f"{settings.db.SERVER}://{settings.db.USER}:{settings.db.PASSWORD}@{settings.db.ADDRESS}:{settings.db.PORT}/{settings.db.DATABASE}"
 
     @classmethod
     def _close_pool(cls) -> None:
@@ -46,7 +25,7 @@ class BaseRepository:
     @classmethod
     def _get_pool(cls) -> ConnectionPool:
         if not cls._pool:
-            cls._read_env_vars()
+            cls._load_conn_string()
             try:
                 cls._pool = ConnectionPool(
                     conninfo=cls._conn_string,
@@ -58,9 +37,7 @@ class BaseRepository:
                 cls._pool.open()
                 atexit.register(cls._close_pool)
             except Exception as e:
-                raise InternalError(
-                    internal_message=f"Failed opening connection pool in base repository because: {e}"
-                )
+                raise DatabaseError(message=str(e), method="_get_pool")
 
         return cls._pool
 
@@ -90,9 +67,7 @@ class BaseRepository:
                 conn.commit()
 
         except Exception as e:
-            raise InternalError(
-                internal_message=f"Failed db tables initialization because: {e}"
-            )
+            raise DatabaseError(message=str(e), method="_setup_db")
 
     def _execute(self, query: str, params: Optional[tuple] = None) -> DBResult:
         pool = self._get_pool()
@@ -130,9 +105,7 @@ class BaseRepository:
                         cur.execute(input[0], input[1] or ())
 
                         if cur.description is not None:
-                            raise InternalError(
-                                internal_message="_execute_transaction are meant for updating only. For reading data use _execute."
-                            )
+                            raise DatabaseError(message="This method is used only for update queries.", method="_execute_transaction")
 
                         row_count += cur.rowcount
 

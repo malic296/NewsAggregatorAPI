@@ -4,10 +4,9 @@ from app.api.dependencies import get_email_service, get_database_service, get_cu
 from fastapi.security import OAuth2PasswordRequestForm
 from app.models import Consumer
 from app.schemas import RegistrationDTO, ConsumerDTO, UpdateCredentialsDTO
-from app.core.errors import InternalError
+from app.core.errors import InvalidCredentialsError, InvalidCurrentPasswordError, PasswordReuseError
 from app.schemas.responses import ConsumersResponse, BaseResponse, TokenResponse
 from dataclasses import asdict
-from fastapi import status
 
 consumer_router = APIRouter(
     prefix="/consumers",
@@ -41,10 +40,7 @@ def verify_email(email: str, code: int, db = Depends(get_database_service), secu
 def login(form: OAuth2PasswordRequestForm = Depends(), db = Depends(get_database_service), security = Depends(get_security_service)):
     consumer = db.get_consumer_by_credential(form.username)
     if not consumer or not security.verify_password(db.get_consumers_hash(consumer.id), form.password):
-        raise InternalError(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            public_message="Invalid login details"
-        )
+        raise InvalidCredentialsError()
 
     token = security.create_access_token(consumer)
 
@@ -65,20 +61,14 @@ def get_currently_logged_consumer(current_user: Consumer = Depends(get_current_u
 @consumer_router.put("/update_credentials", response_model=TokenResponse)
 def update_credentials(request: UpdateCredentialsDTO, user: Consumer = Depends(get_current_user), db = Depends(get_database_service), security = Depends(get_security_service)):
     if not security.verify_password(db.get_consumers_hash(user.id), request.old_password):
-        raise InternalError(
-            status_code=400,
-            public_message="Provided incorrect old password."
-        )
+        raise InvalidCurrentPasswordError()
 
     if request.new_password:
-        if security.is_password_identical_to_hash(hash, request.new_password):
-            raise InternalError(
-                status_code=400,
-                public_message="Cannot change password with previously used password."
-            )
+        if security.is_password_identical_to_hash(db.get_consumers_hash(user.id), request.new_password):
+            raise PasswordReuseError()
         request.new_password = security.get_password_hash(request.new_password)
 
-    consumer: Consumer = db.update_credentails(request)
+    consumer: Consumer = db.update_credentials(request, user)
 
     token = security.create_access_token(consumer)
 
