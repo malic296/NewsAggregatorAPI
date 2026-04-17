@@ -6,17 +6,35 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1 import v1_router
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
-from app.api.dependencies import get_logging_handler
 from app.handlers import LoggingHandler
 from app.schemas.responses import BaseResponse
 from app.api.dependencies import generate_unique_endpoint_id
-from app.api.dependencies import get_cache_service
 from app.core.errors import RateLimitExceededError, AppError
+from app.core.container import ServiceContainer
+from app.handlers import create_logging_handler
+from app.repositories import ArticleRepository, ChannelRepository, ConsumerRepository
+from app.services import CacheService, SecurityService, EmailService, DatabaseService
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.cache = get_cache_service()
-    app.state.logger = get_logging_handler()
+    cache = CacheService()
+    security = SecurityService()
+    email = EmailService()
+    db = DatabaseService(
+        articles=ArticleRepository(),
+        channels=ChannelRepository(),
+        consumers=ConsumerRepository(),
+        cache=cache
+    )
+    logger = create_logging_handler()
+
+    app.state.services = ServiceContainer(
+        db=db,
+        cache=cache,
+        email=email,
+        security=security,
+        logger=logger
+    )
     yield
 app = FastAPI(debug=True, generate_unique_id_function=generate_unique_endpoint_id, lifespan=lifespan)
 
@@ -33,9 +51,7 @@ def create_error_response(err: AppError) -> JSONResponse:
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, err: Exception):
-    logger: LoggingHandler = get_logging_handler()
-
-    message = "Server failed unexpectedly. Try again in a moment."
+    logger: LoggingHandler = request.app.state.services.logger
 
     if isinstance(err, AppError):
         if err.internal_message:
@@ -59,7 +75,7 @@ async def rate_limit_middleware(request: Request, call_next):
         client_key = authorization_header.removeprefix("Bearer").strip()
     else:
         client_key = request.client.host if request.client else "unknown"
-    allowed = request.app.state.cache.can_request_go_through(client_key)
+    allowed = request.app.state.services.cache.can_request_go_through(client_key)
     if not allowed:
         err = RateLimitExceededError()
         return create_error_response(err)
@@ -72,7 +88,7 @@ async def logging_request_middleware(request: Request, call_next):
     response = await call_next(request)
 
     log = f"IP: {request.client.host if request.client else 'Unknown'} | {request.method} {request.url.path} | Status: {response.status_code}"
-    request.app.state.logger.handle(log)
+    request.app.state.services.logger.handle(log)
 
     return response
 

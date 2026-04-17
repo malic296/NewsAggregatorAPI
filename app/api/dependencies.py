@@ -1,46 +1,41 @@
-from pathlib import Path
-from typing import Optional, Annotated
-from fastapi import Depends, status
+from typing import Annotated
+from fastapi import Depends, Request
 from fastapi.routing import APIRoute
 from fastapi.security import OAuth2PasswordBearer
-from app.handlers import LoggingHandler, DatabaseLogger, FileLogger
-from app.repositories import ArticleRepository, ChannelRepository, ConsumerRepository, LoggingRepository
-from app.services import CacheService, DatabaseService, SecurityService, EmailService, LoggingService
+from app.services import CacheService, DatabaseService, SecurityService, EmailService
 from app.models import Consumer
 from app.core.errors import AuthenticationRequiredError
+from app.core.container import ServiceContainer
+from app.handlers import LoggingHandler
 
-def get_logging_handler(path: Optional[Path] = None) -> LoggingHandler:
-    log_service: LoggingService = LoggingService(
-        file_path = path if path else Path(__file__).parent.parent.parent / "api_errors.log",
-        logging_repository = LoggingRepository()
-    )
+def get_services(request: Request) -> ServiceContainer:
+    return request.app.state.services
 
-    db_logger = DatabaseLogger(log_service)
-    file_logger = FileLogger(log_service)
-    db_logger.set_next(file_logger)
+def get_database_service(services: Annotated[ServiceContainer, Depends(get_services)]) -> DatabaseService:
+    return services.db
 
-    return db_logger
+def get_security_service(services: Annotated[ServiceContainer, Depends(get_services)]) -> SecurityService:
+    return services.security
 
-def get_database_service():
-    cache = CacheService()
-    return DatabaseService(
-        articles=ArticleRepository(),
-        channels=ChannelRepository(),
-        consumers=ConsumerRepository(),
-        cache=cache
-    )
+def get_email_service(services: Annotated[ServiceContainer, Depends(get_services)]) -> EmailService:
+    return services.email
 
-def get_security_service():
-    return SecurityService()
+def get_cache_service(services: Annotated[ServiceContainer, Depends(get_services)]) -> CacheService:
+    return services.cache
 
-def get_email_service():
-    return EmailService()
+def get_logger(services: Annotated[ServiceContainer, Depends(get_services)]) -> LoggingHandler:
+    return services.logger
 
 def generate_unique_endpoint_id(route: APIRoute):
     return route.name
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/consumers/login")
 
-def get_current_user(token: Annotated[str, Depends(OAuth2PasswordBearer(tokenUrl="/v1/consumers/login"))], security = Depends(get_security_service), db = Depends(get_database_service)) -> Consumer:
+def get_current_user(
+        token: Annotated[str, Depends(oauth2_scheme)],
+        security: Annotated[SecurityService, Depends(get_security_service)],
+        db: Annotated[DatabaseService, Depends(get_database_service)]
+    ) -> Consumer:
 
     payload = security.decode_access_token(token)
     if payload is None:
@@ -51,6 +46,3 @@ def get_current_user(token: Annotated[str, Depends(OAuth2PasswordBearer(tokenUrl
         raise AuthenticationRequiredError()
 
     return user
-
-def get_cache_service():
-    return CacheService()
