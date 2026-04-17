@@ -13,26 +13,26 @@ from app.core.errors import RateLimitExceededError, AppError
 from app.core.container import ServiceContainer
 from app.handlers import create_logging_handler
 from app.repositories import ArticleRepository, ChannelRepository, ConsumerRepository
-from app.services import CacheService, SecurityService, EmailService, DatabaseService
+from app.services import CacheService, SecurityService, EmailService, ArticleService, ChannelService, ConsumerService
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     cache = CacheService()
     security = SecurityService()
     email = EmailService()
-    db = DatabaseService(
-        articles=ArticleRepository(),
-        channels=ChannelRepository(),
-        consumers=ConsumerRepository(),
-        cache=cache
-    )
+    article_service = ArticleService(articles=ArticleRepository(), cache=cache)
+    channel_service = ChannelService(channels=ChannelRepository(), cache=cache)
+    consumer_service = ConsumerService(consumers=ConsumerRepository(), cache=cache)
+
     logger = create_logging_handler()
 
     app.state.services = ServiceContainer(
-        db=db,
-        cache=cache,
-        email=email,
-        security=security,
+        article_service=article_service,
+        channel_service=channel_service,
+        consumer_service=consumer_service,
+        cache_service=cache,
+        email_service=email,
+        security_service=security,
         logger=logger
     )
     yield

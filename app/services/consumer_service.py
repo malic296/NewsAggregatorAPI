@@ -1,42 +1,14 @@
 from typing import Optional
-from app.models import Consumer, Channel, Article
-from app.core.errors import EmailAlreadyUsedError, UsernameAlreadyUsedError, RegistrationExpiredError, ArticleNotFoundError
-from app.repositories import ChannelRepository, ConsumerRepository, ArticleRepository
-from app.schemas import RegistrationDTO, ChannelDTO
-from fastapi import status
-from app.schemas import UpdateCredentialsDTO
-from.cache_service import CacheService
+from app.models import Consumer
+from app.schemas import RegistrationDTO, UpdateCredentialsDTO
+from app.repositories import ConsumerRepository
+from app.core.errors import RegistrationExpiredError, EmailAlreadyUsedError, UsernameAlreadyUsedError
+from .cache_service import CacheService
 
-class DatabaseService:
-    def __init__(self, articles: ArticleRepository, channels: ChannelRepository, consumers: ConsumerRepository, cache: CacheService):
-        self.articles = articles
-        self.channels = channels
+class ConsumerService:
+    def __init__(self, consumers: ConsumerRepository, cache: CacheService):
         self.consumers = consumers
         self.cache = cache
-
-    def get_articles(self, consumer: Consumer, hours: int = 1) -> list[Article]:
-        return self.articles.get_articles(consumer=consumer, hours=hours)
-
-    def get_article(self, uuid: str) -> Optional[Article]:
-        article = self.cache.get_article(uuid=uuid)
-        if not article:
-            article = self.articles.get_article(uuid=uuid)
-            if article:
-                self.cache.set_article(article=article)
-        return article
-
-    def get_channels(self, user_id: int) -> list[Channel]:
-        cached_channels = self.cache.get_available_channels(user_id=user_id)
-        if cached_channels:
-            return cached_channels
-
-        channels = self.channels.get_channels(user_id)
-        self.cache.set_available_channels(channels=channels, user_id=user_id)
-        return channels
-
-    def set_disabled_channels(self, user_id: int, disabled_channels: list[ChannelDTO]) -> None:
-        self.cache.invalidate_cache_channels(user_id=user_id)
-        self.channels.set_disabled_channels_by_uuids(user_id, [channel.uuid for channel in disabled_channels])
 
     def is_email_used(self, email: str) -> bool:
         consumer = self.consumers.get_consumer_by_email(email)
@@ -74,7 +46,7 @@ class DatabaseService:
             return self.consumers.register_consumer(registration)
         else:
             raise RegistrationExpiredError()
-    
+
     def get_consumer_by_credential(self, credential: str) -> Optional[Consumer]:
         consumer = self.consumers.get_consumer_by_username(credential)
         if not consumer:
@@ -84,16 +56,9 @@ class DatabaseService:
 
     def get_consumer_by_username(self, username: str) -> Optional[Consumer]:
         return self.consumers.get_consumer_by_username(username)
-    
+
     def get_consumers_hash(self, id: int) -> Optional[str]:
         return self.consumers.get_consumers_hash(id)
-    
-    def like_article(self, article_uuid: str, consumer: Consumer) -> bool:
-        article_id = self.articles.article_uuid_to_id(article_uuid)
-        if not article_id:
-            raise ArticleNotFoundError()
-        
-        return self.articles.like_article(article_id=article_id, consumer_id=consumer.id)
 
     def update_credentials(self, request: UpdateCredentialsDTO, user: Consumer):
         if request.new_username:
@@ -104,3 +69,4 @@ class DatabaseService:
             self.consumers.update_consumers_password(user_id=user.id, new_hash=request.new_password)
 
         return user
+

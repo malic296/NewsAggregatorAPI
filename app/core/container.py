@@ -1,11 +1,14 @@
 from dataclasses import dataclass
 from app.handlers import LoggingHandler
-from app.services import DatabaseService, EmailService, SecurityService, CacheService
+from app.services import ArticleService, ChannelService, ConsumerService, EmailService, SecurityService, CacheService
+
 
 @dataclass(frozen=True)
 class ServiceContainer:
-    db: DatabaseService
-    cache: CacheService
-    email: EmailService
-    security: SecurityService
+    article_service: ArticleService
+    channel_service: ChannelService
+    consumer_service: ConsumerService
+    cache_service: CacheService
+    email_service: EmailService
+    security_service: SecurityService
     logger: LoggingHandler
