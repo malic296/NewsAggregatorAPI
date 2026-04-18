@@ -24,9 +24,7 @@ def read_articles(hours: int = 1, user = Depends(get_current_user), article_serv
 
 @article_router.get("/read_article", response_model=ArticleResponse)
 def read_article(uuid: str, article_service = Depends(get_article_service)):
-    article: Optional[Article] = article_service.get_article(uuid)
-    if not article:
-        raise ArticleNotFoundError()
+    article: Article = article_service.get_article(uuid)
 
     return ArticleResponse(
         message="Article fetched correctly",

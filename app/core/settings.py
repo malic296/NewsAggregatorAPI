@@ -39,12 +39,12 @@ def load_settings() -> Settings:
     try:
         load_dotenv(Path(__file__).parent.parent.parent / ".env")
         db: DatabaseSettings = DatabaseSettings(
-            SERVER = os.environ["SERVER"],
+            SERVER = os.environ["DB_SERVER"],
             USER = os.environ["DB_USER"],
-            PASSWORD = os.environ["PASSWORD"],
-            ADDRESS = os.environ["ADDRESS"],
-            PORT = os.environ["PORT"],
-            DATABASE = os.environ["DATABASE"]
+            PASSWORD = os.environ["DB_PASSWORD"],
+            ADDRESS = os.environ["DB_ADDRESS"],
+            PORT = os.environ["DB_PORT"],
+            DATABASE = os.environ["DB_DATABASE"]
         )
 
         cache: CacheSettings = CacheSettings(

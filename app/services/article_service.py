@@ -12,12 +12,16 @@ class ArticleService:
     def get_articles(self, consumer: Consumer, hours: int = 1) -> list[Article]:
         return self.articles.get_articles(consumer=consumer, hours=hours)
 
-    def get_article(self, uuid: str) -> Optional[Article]:
+    def get_article(self, uuid: str) -> Article:
         article = self.cache.get_article(uuid=uuid)
         if not article:
             article = self.articles.get_article(uuid=uuid)
             if article:
                 self.cache.set_article(article=article)
+
+        if not article:
+            raise ArticleNotFoundError()
+
         return article
 
     def like_article(self, article_uuid: str, consumer: Consumer) -> bool:

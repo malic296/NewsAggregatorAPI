@@ -22,7 +22,12 @@ async def lifespan(app: FastAPI):
     email = EmailService()
     article_service = ArticleService(articles=ArticleRepository(), cache=cache)
     channel_service = ChannelService(channels=ChannelRepository(), cache=cache)
-    consumer_service = ConsumerService(consumers=ConsumerRepository(), cache=cache)
+    consumer_service = ConsumerService(
+        consumers=ConsumerRepository(),
+        cache=cache,
+        security=security,
+        email=email,
+    )
 
     logger = create_logging_handler()
 
@@ -75,7 +80,7 @@ async def rate_limit_middleware(request: Request, call_next):
         client_key = authorization_header.removeprefix("Bearer").strip()
     else:
         client_key = request.client.host if request.client else "unknown"
-    allowed = request.app.state.services.cache.can_request_go_through(client_key)
+    allowed = request.app.state.services.cache_service.can_request_go_through(client_key)
     if not allowed:
         err = RateLimitExceededError()
         return create_error_response(err)
