@@ -1,10 +1,9 @@
 from app.core.errors import DependencyUnavailableError
-from app.core.settings import settings
 import resend
 
 class EmailService:
-    def __init__(self):
-        resend.api_key = settings.keys.RESEND
+    def __init__(self, resend_key: str):
+        resend.api_key = resend_key
 
     def send_verification_code(self, email: str, code: int) -> None:
         html = f"""

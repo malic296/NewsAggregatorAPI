@@ -7,5 +7,5 @@ class ChannelInterface(ABC):
         ...
 
     @abstractmethod
-    def set_disabled_channels_by_uuids(self, user_id: int, channel_ids: list[int]) -> None:
+    def set_disabled_channels_by_uuids(self, user_id: int, channel_ids: list[str]) -> None:
         ...

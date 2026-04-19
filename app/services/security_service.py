@@ -5,13 +5,12 @@ import jwt
 from jwt import PyJWTError
 from argon2.exceptions import VerificationError, VerifyMismatchError, InvalidHashError
 from app.models import Consumer
-from app.core.settings import settings
 
 class SecurityService:
-    def __init__(self):
+    def __init__(self, pepper: str, jwt: str):
         self._hasher = PasswordHasher()
-        self._pepper = settings.secrets.PEPPER
-        self._secret_key = settings.secrets.JWT
+        self._pepper = pepper
+        self._secret_key = jwt
         self._algorithm = "HS256"
 
     def get_password_hash(self, password: str) -> str:

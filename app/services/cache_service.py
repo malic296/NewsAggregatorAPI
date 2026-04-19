@@ -8,18 +8,17 @@ import json
 from dataclasses import asdict
 from redis.retry import Retry
 from redis.backoff import NoBackoff
-from app.core.settings import settings
 
 class CacheService:
-    def __init__(self):
+    def __init__(self, host: str, port: int, db: int):
         self._reg_key_prefix = "reg:"
         self._data_key_prefix = "data:"
 
         try:
             self._client = Redis(
-                host=settings.cache.HOST,
-                port=settings.cache.PORT,
-                db=settings.cache.DATABASE,
+                host=host,
+                port=port,
+                db=db,
                 decode_responses=True,
                 retry=Retry(NoBackoff(), 0),
                 socket_connect_timeout=2.0

@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from app.handlers import LoggingHandler
 from app.services import ArticleService, ChannelService, ConsumerService, EmailService, SecurityService, CacheService
 
-
 @dataclass(frozen=True)
 class ServiceContainer:
     article_service: ArticleService

@@ -1,10 +1,10 @@
 from app.models import Channel
 from app.schemas import ChannelDTO
-from app.repositories import ChannelRepository
+from app.interfaces import ChannelInterface
 from .cache_service import CacheService
 
 class ChannelService:
-    def __init__(self, channels: ChannelRepository, cache: CacheService):
+    def __init__(self, channels: ChannelInterface, cache: CacheService):
         self.channels = channels
         self.cache = cache
 

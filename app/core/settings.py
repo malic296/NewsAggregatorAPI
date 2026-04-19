@@ -1,75 +1,22 @@
-from dataclasses import dataclass
-from .errors import EnvVarNotFoundError
-from dotenv import load_dotenv
-from pathlib import Path
-import os
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-@dataclass(frozen=True)
-class DatabaseSettings:
-    SERVER: str
-    USER: str
-    PASSWORD: str
-    ADDRESS: str
-    PORT: str
-    DATABASE: str
+class Settings(BaseSettings):
+    db_server: str = Field(alias="DB_SERVER")
+    db_user: str = Field(alias="DB_USER")
+    db_password: str = Field(alias="DB_PASSWORD")
+    db_address: str = Field(alias="DB_ADDRESS")
+    db_port: int = Field(alias="DB_PORT")
+    db_name: str = Field(alias="DB_NAME")
 
-@dataclass(frozen=True)
-class CacheSettings:
-    HOST: str
-    PORT: int
-    DATABASE: int
+    valkey_host: str = Field(alias="VALKEY_HOST")
+    valkey_port: int = Field(alias="VALKEY_PORT")
+    valkey_db: int = Field(alias="VALKEY_DB")
 
-@dataclass(frozen=True)
-class KeysSettings:
-    RESEND: str
+    resend_key: str = Field(alias="RESEND_API_KEY")
+    jwt_secret: str = Field(alias="JWT_SECRET")
+    pepper: str = Field(alias="PEPPER")
 
-@dataclass(frozen=True)
-class SecretsSettings:
-    JWT: str
-    PEPPER: str
+    environment: str = Field(alias="ENVIRONMENT", default="dev")
 
-@dataclass(frozen=True)
-class Settings:
-    db: DatabaseSettings
-    cache: CacheSettings
-    keys: KeysSettings
-    secrets: SecretsSettings
-
-def load_settings() -> Settings:
-    try:
-        load_dotenv(Path(__file__).parent.parent.parent / ".env")
-        db: DatabaseSettings = DatabaseSettings(
-            SERVER = os.environ["DB_SERVER"],
-            USER = os.environ["DB_USER"],
-            PASSWORD = os.environ["DB_PASSWORD"],
-            ADDRESS = os.environ["DB_ADDRESS"],
-            PORT = os.environ["DB_PORT"],
-            DATABASE = os.environ["DB_DATABASE"]
-        )
-
-        cache: CacheSettings = CacheSettings(
-            HOST = os.environ["VALKEY_HOST"],
-            PORT = int(os.environ["VALKEY_PORT"]),
-            DATABASE = int(os.environ["VALKEY_DB"]),
-        )
-
-        keys: KeysSettings = KeysSettings(
-            RESEND = os.environ["RESEND_API_KEY"],
-        )
-
-        secrets: SecretsSettings = SecretsSettings(
-            JWT = os.environ["JWT_SECRET"],
-            PEPPER = os.environ["PEPPER"],
-        )
-
-        return Settings(
-            db=db,
-            cache=cache,
-            keys=keys,
-            secrets=secrets
-        )
-
-    except KeyError as e:
-        raise EnvVarNotFoundError(variable=str(e))
-
-settings = load_settings()
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")

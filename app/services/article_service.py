@@ -1,11 +1,10 @@
-from typing import Optional
 from app.models import Consumer, Article
-from app.repositories import ArticleRepository
+from app.interfaces import ArticleInterface
 from app.core.errors import ArticleNotFoundError
 from .cache_service import CacheService
 
 class ArticleService:
-    def __init__(self, articles: ArticleRepository, cache: CacheService):
+    def __init__(self, articles: ArticleInterface, cache: CacheService):
         self.articles = articles
         self.cache = cache
 

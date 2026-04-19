@@ -2,7 +2,7 @@ import secrets
 from typing import Optional
 from app.models import Consumer
 from app.schemas import RegistrationDTO, UpdateCredentialsDTO
-from app.repositories import ConsumerRepository
+from app.interfaces import ConsumerInterface
 from app.core.errors import RegistrationExpiredError, EmailAlreadyUsedError, UsernameAlreadyUsedError, InvalidCredentialsError, InvalidCurrentPasswordError, PasswordReuseError
 from .cache_service import CacheService
 from .email_service import EmailService
@@ -11,7 +11,7 @@ from .security_service import SecurityService
 class ConsumerService:
     def __init__(
         self,
-        consumers: ConsumerRepository,
+        consumers: ConsumerInterface,
         cache: CacheService,
         security: SecurityService,
         email: EmailService,
