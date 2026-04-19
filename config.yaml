@@ -1,0 +1,12 @@
+environment: "dev"
+update_interval: 72
+feeds:
+  - https://www.aktualne.cz/rss/magazin?lp=1
+  - https://www.ceskenoviny.cz/sluzby/rss/zpravy.php
+  - https://www.pbj.cz/feed
+  - https://www.blesk.cz/rss
+  - https://servis.idnes.cz/rss.aspx
+  - https://servis.lidovky.cz/rss.aspx
+  - https://ct24.ceskatelevize.cz/rss/tema/vyber-redakce-84313
+  - https://ct24.ceskatelevize.cz/rss/slezsko
+  - https://ct24.ceskatelevize.cz/rss/morava

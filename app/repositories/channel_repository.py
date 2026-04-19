@@ -1,5 +1,8 @@
+import uuid
+
 from app.models import Channel
 from app.core.errors import DatabaseError, MappingError
+from app.models.scraped_data import ScrapedChannel
 from .base_repository import BaseRepository
 from app.interfaces import ChannelInterface
 
@@ -46,3 +49,46 @@ class ChannelRepository(BaseRepository, ChannelInterface):
                 method="set_disabled_channels_by_uuids"
             )
 
+    def update_channels(self, channels: list[ScrapedChannel]) -> None:
+        article_queries: list[tuple[str, tuple]] = []
+
+        for channel in channels:
+            channel_sql = """
+                INSERT INTO channel (title, link, uuid)
+                VALUES (%s, %s, %s) ON CONFLICT (link) DO 
+                UPDATE 
+                SET title = EXCLUDED.title 
+                RETURNING id; 
+            """
+            channel_params = (channel.title, channel.link, str(uuid.uuid4()))
+
+            channel_result = self._execute(channel_sql, channel_params)
+
+            if not channel_result.success:
+                raise DatabaseError(message= channel_result.error_message if channel_result.error_message else "Unknown error", method="update_channels")
+
+            if not channel_result.data:
+                raise DatabaseError(f"Failed to fetch ID for channel {channel.title}", method="update_channels")
+
+            channel_id = channel_result.data[0]["id"]
+
+            for article in channel.articles:
+                art_sql = """
+                    INSERT INTO article (title, link, description, pub_date, channel_id, uuid)
+                    VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (link) DO NOTHING; 
+                """
+                art_params = (
+                    article.title,
+                    article.link,
+                    article.description,
+                    str(article.pub_date),
+                    channel_id,
+                    str(uuid.uuid4())
+                )
+                article_queries.append((art_sql, art_params))
+
+        if article_queries:
+            articles_result = self._execute_transaction(article_queries)
+
+            if not articles_result.success:
+                raise DatabaseError(message= articles_result.error_message if articles_result.error_message else "Unknown error", method="update_channels")

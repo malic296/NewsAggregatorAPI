@@ -7,6 +7,9 @@ class AppError(Exception):
         self.internal_message = internal_message
         self.public_message = public_message if public_message else "Internal Server Error."
 
+class CLIError(Exception):
+    pass
+
 class AuthenticationRequiredError(AppError):
     def __init__(self):
         super().__init__(
@@ -108,5 +111,9 @@ class RateLimitExceededError(AppError):
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             public_message="Too many requests. Try again in a short moment."
         )
+
+
+class ScrapingError(CLIError):
+    pass
 
 

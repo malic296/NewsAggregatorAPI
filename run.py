@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
 
     # CORE SERVICES
     article_service = ArticleService(articles=article_repository, cache=cache)
-    channel_service = ChannelService(channels=channel_repository, cache=cache)
+    channel_service = ChannelService(channels=channel_repository, cache=cache, scraping_service=None)
     consumer_service = ConsumerService(
         consumers=consumer_repository,
         cache=cache,
@@ -59,7 +59,7 @@ async def lifespan(app: FastAPI):
     db_pool.close()
 
 # APP
-app = FastAPI(debug=(settings.environment == "dev"), generate_unique_id_function=generate_unique_endpoint_id, lifespan=lifespan)
+app = FastAPI(debug=(settings.config.environment == "dev"), generate_unique_id_function=generate_unique_endpoint_id, lifespan=lifespan)
 
 # EXCEPTION HANDLERS
 app.add_exception_handler(Exception, global_exception_handler)
@@ -71,7 +71,7 @@ app.add_middleware(BaseHTTPMiddleware, dispatch=logging_request_middleware)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.environment == "dev" else ["https://production.com"],
+    allow_origins=["*"] if settings.config.environment == "dev" else ["https://production.com"],
     allow_methods=["GET", "POST"]
 )
 

@@ -1,5 +1,5 @@
 from starlette.testclient import TestClient
-from app.main import app
+from run import app
 
 def test_not_authorized(redis_container_setup, postgres_container_setup, db_connection, cache_client, email_mock):
     test_client = TestClient(app, raise_server_exceptions=False)

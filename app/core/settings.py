@@ -1,5 +1,18 @@
-from pydantic import Field
+from pydantic import Field, BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import yaml
+
+def load_yaml_config() -> dict:
+    try:
+        with open("config.yaml", "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        return {"feeds": [], "environment": "dev", "update_interval": 10}
+
+class Config(BaseModel):
+    feeds: list[str]
+    environment: str
+    update_interval: int
 
 class Settings(BaseSettings):
     db_server: str = Field(alias="DB_SERVER")
@@ -17,6 +30,6 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(alias="JWT_SECRET")
     pepper: str = Field(alias="PEPPER")
 
-    environment: str = Field(alias="ENVIRONMENT", default="dev")
+    config: Config = Field(default_factory=load_yaml_config)
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

@@ -1,5 +1,5 @@
 import json
-from app.main import app
+from run import app
 from fastapi.testclient import TestClient
 from app.schemas import RegistrationDTO
 

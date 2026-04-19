@@ -1,11 +1,9 @@
 from fastapi.testclient import TestClient
 import pytest
-from fastapi_limiter.depends import RateLimiter
-from pyrate_limiter import Limiter, Rate, Duration
 
 from app.dependencies.auth import get_current_user, get_rate_limiter
 from app.dependencies.service_container import get_service_container
-from app.main import app
+from run import app
 from app.models import Consumer
 
 @pytest.fixture
