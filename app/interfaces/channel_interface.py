@@ -13,5 +13,5 @@ class ChannelInterface(ABC):
         ...
 
     @abstractmethod
-    def update_channels(self, channels: list[ScrapedChannel]) -> None:
+    def update_channels(self, channels: list[ScrapedChannel]) -> int:
         ...

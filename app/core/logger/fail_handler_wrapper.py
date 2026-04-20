@@ -13,7 +13,8 @@ class DropOnFailHandler(logging.Handler):
         except Exception as e:
             if not self._removed:
                 print(f"[CRITICAL] Loggers handler {self.handler.__class__.__name__} failed because: {e}", file=sys.stderr)
-                root_logger = logging.getLogger("aggregator")
+                root_logger = logging.getLogger(record.name)
                 root_logger.removeHandler(self)
                 self._removed = True
+
 

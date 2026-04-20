@@ -1,5 +1,4 @@
 from httpx import AsyncClient
-#from logger.logging_manager import LoggerMode, LoggingManager
 import asyncio
 from app.core.errors import AppError
 from app.core.settings import Settings
@@ -8,11 +7,18 @@ from app.services.channel_service import ChannelService
 from app.services.scraping_service import ScrapingService
 from app.services import CacheService
 from app.repositories.channel_repository import ChannelRepository
-
+from app.core.logger.database_logger import DatabaseLogger
+from app.core.logger.fail_handler_wrapper import DropOnFailHandler
+from app.repositories import LoggingRepository
+import logging
 
 async def main() -> None:
     settings: Settings = Settings()
     db_pool = create_connection_pool(settings)
+    logging_repo = LoggingRepository(connection_pool=db_pool)
+    db_logger = DatabaseLogger(writer_func=logging_repo.log_to_db)
+    logger = DropOnFailHandler(db_logger)
+    logging.getLogger().addHandler(logger)
     try:
         async with AsyncClient(timeout=5.0) as client:
             scraping_service = ScrapingService(client)
@@ -25,25 +31,14 @@ async def main() -> None:
                 ),
                 scraping_service=scraping_service
             )
-            print("hi")
             await channel_service.update_channels(channel_urls=settings.config.feeds, hours=settings.config.update_interval)
-            print("hi")
+
+    except AppError as e:
+        logging.getLogger(__name__).error(str(e))
     except Exception as e:
-        print(e)
+        logging.getLogger(__name__).error("UNEXPECTED ERROR: " + str(e))
     finally:
         db_pool.close()
 
-
-
 if __name__ == "__main__":
-    #log_manager = LoggingManager(mode=LoggerMode.ALL)
-    #logger = log_manager.get_logger(__name__)
-
-    try:
-        asyncio.run(main())
-    except AppError as e:
-        print(e)
-        #logger.error(str(e))
-    except Exception as e:
-        print(e)
-        #logger.error("Unexpected error: " + str(e))
+    asyncio.run(main())

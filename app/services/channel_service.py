@@ -29,4 +29,6 @@ class ChannelService:
         if not self.scraping_service:
             raise DependencyUnavailableError(dependency="ScrapingService")
         channels: list[ScrapedChannel] = await self.scraping_service.fetch_channels(feeds=channel_urls, hours=hours)
-        self.channels.update_channels(channels)
+        updated_articles = self.channels.update_channels(channels)
+
+
