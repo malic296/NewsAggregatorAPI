@@ -13,13 +13,13 @@ class ScrapingService:
         self.client = client
         self.parsers = [AtomParser(), RSSParser()]
 
-    async def fetch_channels(self, feeds: List[str], hours: int = 1) -> List[ScrapedChannel]:
+    async def fetch_channels(self, feeds: List[str], hours: int = 1) -> list[ScrapedChannel]:
         tasks = [self._read_data_from_url(feed, hours) for feed in feeds]
         channels = await asyncio.gather(*tasks)
 
         return channels
 
-    async def _read_data_from_url(self, link: str, hours: int = 1) -> ScrapedChannel | None:
+    async def _read_data_from_url(self, link: str, hours: int = 1) -> ScrapedChannel:
         async with self._semaphore:
             try:
                 content = await self._get_content_from_url(link)

@@ -2,8 +2,9 @@ from app.models import Channel
 from app.schemas import ChannelDTO
 from app.interfaces import ChannelInterface
 from .cache_service import CacheService
-from app.models.scraped_data import ScrapedChannel, ScrapedArticle
+from app.models.scraped_data import ScrapedChannel
 from .scraping_service import ScrapingService
+from app.core.errors import DependencyUnavailableError
 
 class ChannelService:
     def __init__(self, channels: ChannelInterface, cache: CacheService, scraping_service: ScrapingService | None):
@@ -25,5 +26,7 @@ class ChannelService:
         self.channels.set_disabled_channels_by_uuids(user_id, [channel.uuid for channel in disabled_channels])
 
     async def update_channels(self, channel_urls: list[str], hours: int) -> None:
+        if not self.scraping_service:
+            raise DependencyUnavailableError(dependency="ScrapingService")
         channels: list[ScrapedChannel] = await self.scraping_service.fetch_channels(feeds=channel_urls, hours=hours)
         self.channels.update_channels(channels)

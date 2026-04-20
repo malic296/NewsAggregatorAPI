@@ -1,8 +1,10 @@
+import uuid
 import xml.etree.ElementTree as ET
 from .feed_parser import FeedParser
 from app.core.errors import ScrapingError
 from datetime import datetime, timedelta, timezone
-from app.models.scraped_data import ScrapedChannel, ScrapedArticle
+from app.models.scraped_data import ScrapedChannel
+from app.models import Article
 
 class AtomParser(FeedParser):
     def __init__(self):
@@ -16,12 +18,14 @@ class AtomParser(FeedParser):
         link_elem = root.find(f"{self.namespace}link[@rel='alternate']")
         channel_link = link_elem.attrib.get("href", "") if link_elem is not None else None
 
-        if channel_link is None or channel_title is None:
+        if not channel_link or not channel_title:
             raise ScrapingError(f"Channel or link elements returned none for feed: {root}")
 
-        channel = ScrapedChannel(
-            title=channel_title,
-            link=channel_link
+        result = ScrapedChannel(
+            title=channel_title.strip(),
+            link=channel_link.strip(),
+            uuid=str(uuid.uuid4()),
+            articles=[]
         )
 
         entries = root.findall(f"{self.namespace}entry")
@@ -42,13 +46,17 @@ class AtomParser(FeedParser):
             except Exception as e:
                 raise Exception(f"Atom parser failed to parse the Atom feed because {e}.")
 
-            channel.articles.append(
-                ScrapedArticle(
+            result.articles.append(
+                Article(
                     title=e_title,
                     link=e_link,
+                    description=e_desc,
                     pub_date=e_pub_date,
-                    description=e_desc
+                    uuid=str(uuid.uuid4()),
+                    channel_link=channel_link.strip(),
+                    likes=0
+
                 )
             )
 
-        return channel
+        return result

@@ -83,7 +83,7 @@ class ChannelRepository(BaseRepository, ChannelInterface):
                     article.description,
                     str(article.pub_date),
                     channel_id,
-                    str(uuid.uuid4())
+                    article.uuid
                 )
                 article_queries.append((art_sql, art_params))
 

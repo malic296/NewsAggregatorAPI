@@ -25,9 +25,11 @@ async def main() -> None:
                 ),
                 scraping_service=scraping_service
             )
-
+            print("hi")
             await channel_service.update_channels(channel_urls=settings.config.feeds, hours=settings.config.update_interval)
-
+            print("hi")
+    except Exception as e:
+        print(e)
     finally:
         db_pool.close()
 

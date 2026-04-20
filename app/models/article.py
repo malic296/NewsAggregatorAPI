@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
 @dataclass
 class Article:
-    id: int
     uuid: str
     title: str
     link: str
@@ -12,3 +12,4 @@ class Article:
     channel_link: str
     likes: int
     liked_by_user: bool = False
+    id: Optional[int] = None
