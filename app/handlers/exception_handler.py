@@ -4,7 +4,6 @@ from fastapi import Request, status
 from app.schemas.responses import BaseResponse
 import logging
 
-logger = logging.getLogger(__name__)
 
 def create_error_response(err: AppError) -> JSONResponse:
     response: BaseResponse = BaseResponse(
@@ -20,12 +19,12 @@ def create_error_response(err: AppError) -> JSONResponse:
 async def global_exception_handler(request: Request, err: Exception):
     if isinstance(err, AppError):
         if err.internal_message:
-            logger.error(err.internal_message)
+            logging.getLogger(__name__).error(err.internal_message, extra={"exception": err})
 
         return create_error_response(err=err)
 
     else:
-        logger.error(f"Unexpected Error: {str(err)} | Path: {request.url.path}")
+        logging.getLogger(__name__).error(f"Unexpected Error: {str(err)} | Path: {request.url.path}", extra={"exception": err})
         return create_error_response(
             AppError(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

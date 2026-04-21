@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from app.handlers import LoggingHandler
 from app.services import ArticleService, ChannelService, ConsumerService, EmailService, SecurityService, CacheService
 
 @dataclass(frozen=True)
@@ -10,4 +9,3 @@ class ServiceContainer:
     cache_service: CacheService
     email_service: EmailService
     security_service: SecurityService
-    logger: LoggingHandler

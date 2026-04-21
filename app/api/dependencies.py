@@ -6,7 +6,6 @@ from app.services import CacheService, ArticleService, ChannelService, ConsumerS
 from app.models import Consumer
 from app.core.errors import AuthenticationRequiredError
 from app.core.container import ServiceContainer
-from app.handlers import LoggingHandler
 
 def get_services(request: Request) -> ServiceContainer:
     return request.app.state.services
@@ -28,9 +27,6 @@ def get_email_service(services: Annotated[ServiceContainer, Depends(get_services
 
 def get_cache_service(services: Annotated[ServiceContainer, Depends(get_services)]) -> CacheService:
     return services.cache_service
-
-def get_logger(services: Annotated[ServiceContainer, Depends(get_services)]) -> LoggingHandler:
-    return services.logger
 
 def generate_unique_endpoint_id(route: APIRoute):
     return route.name

@@ -1,8 +1,7 @@
 import logging.config
 import yaml
 from pathlib import Path
-from .database_logger import DatabaseLogger
-from .traceback_formatter import TraceBackFormatter
+from .formatters.traceback_formatter import TraceBackFormatter
 
 def setup_logging():
     path = Path(__file__).parent / "logging.yaml"
