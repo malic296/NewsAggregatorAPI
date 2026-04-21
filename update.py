@@ -17,6 +17,8 @@ async def main() -> None:
     db_pool = create_connection_pool(settings)
     logging_repo = LoggingRepository(connection_pool=db_pool)
     db_logger = DatabaseLogger(writer_func=logging_repo.log_to_db)
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - %(message)s")
+    db_logger.setFormatter(formatter)
     logger = DropOnFailHandler(db_logger)
     logging.getLogger().addHandler(logger)
     try:
@@ -34,9 +36,9 @@ async def main() -> None:
             await channel_service.update_channels(channel_urls=settings.config.feeds, hours=settings.config.update_interval)
 
     except AppError as e:
-        logging.getLogger(__name__).error(str(e))
+        logging.getLogger(__name__).error(e.internal_message, extra={'exception': e})
     except Exception as e:
-        logging.getLogger(__name__).error("UNEXPECTED ERROR: " + str(e))
+        logging.getLogger(__name__).error("UNEXPECTED ERROR: " + str(e), extra={'exception': e})
     finally:
         db_pool.close()
 

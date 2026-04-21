@@ -2,12 +2,18 @@ import logging.config
 import yaml
 from pathlib import Path
 from .database_logger import DatabaseLogger
+from .traceback_formatter import TraceBackFormatter
 
 def setup_logging():
     path = Path(__file__).parent / "logging.yaml"
-    if path.exists():
-        with open(path, 'rt') as f:
-            config = yaml.safe_load(f.read())
-        logging.config.dictConfig(config)
+    with open(path, 'rt') as f:
+        config = yaml.safe_load(f.read())
+    logging.config.dictConfig(config)
+
+    custom_formatter = TraceBackFormatter("%(asctime)s - %(levelname)s - %(module)s - %(method)s - %(message)s")
+
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers:
+        handler.setFormatter(custom_formatter)
 
 setup_logging()

@@ -6,5 +6,4 @@ class DatabaseLogger(logging.Handler):
         self.writer_func = writer_func
 
     def emit(self, record):
-        log_entry = self.format(record)
-        self.writer_func(log_entry)
+        self.writer_func(record)

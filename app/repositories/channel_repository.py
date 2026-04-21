@@ -49,7 +49,7 @@ class ChannelRepository(BaseRepository, ChannelInterface):
                 method="set_disabled_channels_by_uuids"
             )
 
-    def update_channels(self, channels: list[ScrapedChannel]) -> int:
+    def update_channels(self, channels: list[ScrapedChannel]) -> None:
         article_queries: list[tuple[str, tuple]] = []
 
         for channel in channels:
@@ -92,7 +92,3 @@ class ChannelRepository(BaseRepository, ChannelInterface):
 
             if not articles_result.success:
                 raise DatabaseError(message= articles_result.error_message if articles_result.error_message else "Unknown error", method="update_channels")
-
-            return articles_result.row_count if articles_result.row_count else 0
-
-        return 0
