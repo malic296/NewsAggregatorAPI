@@ -112,7 +112,6 @@ class RateLimitExceededError(AppError):
             public_message="Too many requests. Try again in a short moment."
         )
 
-
 class ScrapingError(CLIError):
     pass
 

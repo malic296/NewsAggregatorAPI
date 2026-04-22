@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,12 +9,12 @@ from app.core.container import ServiceContainer
 from app.repositories import ArticleRepository, ChannelRepository, ConsumerRepository, LoggingRepository
 from app.services import CacheService, SecurityService, EmailService, ArticleService, ChannelService, ConsumerService
 from app.core.settings import Settings
-from app.core.middlewares import rate_limit_middleware, logging_request_middleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from app.handlers.exception_handler import global_exception_handler
+from app.core.middlewares import rate_limit_middleware, logging_middleware
+from app.handlers.exception_handlers import internal_exception_handler, http_exception_handler, unexpected_exception_handler
 from app.core.database import create_connection_pool
 from app.core.logger.handlers import DatabaseHandler, DropOnFailHandler
 import logging
+from app.core.errors import AppError
 
 settings = Settings()
 
@@ -65,8 +65,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(debug=(settings.config.environment == "dev"), generate_unique_id_function=generate_unique_endpoint_id, lifespan=lifespan)
 
 # MIDDLEWARES
-app.add_middleware(BaseHTTPMiddleware, dispatch=rate_limit_middleware)
-app.add_middleware(BaseHTTPMiddleware, dispatch=logging_request_middleware)
 #app.add_middleware(HTTPSRedirectMiddleware)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
 app.add_middleware(
@@ -75,8 +73,18 @@ app.add_middleware(
     allow_methods=["GET", "POST"]
 )
 
+@app.middleware("http")
+async def rate_limit(request: Request, call_next):
+    return await rate_limit_middleware(request, call_next)
+
+@app.middleware("http")
+async def logging_request(request: Request, call_next):
+    return await logging_middleware(request, call_next)
+
 # EXCEPTION HANDLERS
-app.add_exception_handler(Exception, global_exception_handler)
+app.add_exception_handler(Exception, unexpected_exception_handler)
+app.add_exception_handler(AppError, internal_exception_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
 
 # ROUTERS
 app.include_router(v1_router)
