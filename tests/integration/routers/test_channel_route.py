@@ -1,19 +1,33 @@
-from app.models.channel import Channel
-from app.schemas import ChannelDTO
-from dataclasses import asdict
-
-def test_get_channels(test_client, mock_services):
-    test_channel = Channel(id=1, uuid="1", title="TITLE_1", link="LINK_1")
-    mock_services.cache.get_available_channels.return_value = []
-    mock_services.db.get_channels.return_value = [test_channel]
-
-    response = test_client.get("/latest/channels/")
+def test_get_channels(test_client, mock_services, consumer):
+    response = test_client.get("/v1/channels/")
     json_data = response.json()
 
-    mock_services.cache.set_available_channels.assert_called_once_with([test_channel])
-
+    mock_services.channel_service.get_channels.assert_called_once_with(consumer.id)
     assert response.status_code == 200
-    assert json_data["message"] == "Channels fetched correctly"
     assert json_data["success"] is True
-    assert len(json_data["data"]) == 1
-    assert ChannelDTO(**asdict(test_channel)) == ChannelDTO(**json_data["data"][0])
+    assert json_data["message"] == "Channels fetched correctly"
+    assert len(json_data["channels"]) == 0
+
+
+def test_disable_channels(test_client, mock_services, consumer):
+    payload = [
+        {
+            "uuid": "channel-uuid",
+            "title": "Channel",
+            "link": "https://example.com/feed",
+            "disabled_by_user": True,
+        }
+    ]
+
+    response = test_client.post("/v1/channels/disabled", json=payload)
+    json_data = response.json()
+
+    mock_services.channel_service.set_disabled_channels.assert_called_once()
+    args = mock_services.channel_service.set_disabled_channels.call_args.args
+    assert args[0] == consumer.id
+    assert args[1][0].uuid == "channel-uuid"
+    assert response.status_code == 200
+    assert json_data == {
+        "success": True,
+        "message": "Channels have been disabled for logged user.",
+    }

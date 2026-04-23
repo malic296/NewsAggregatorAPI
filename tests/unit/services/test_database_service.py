@@ -1,127 +1,147 @@
-from app.models import Article, Consumer, Channel
-from datetime import datetime
 import pytest
-from fastapi import status
-from app.core.errors import InternalError
 
-def test_get_articles(mocker, db_service):
-    articles = [Article(1, "1", "test", "test", "test", datetime.now(), "https://test", 10, True)]
-    mocker.patch.object(db_service.articles, "get_articles", return_value=articles)
-
-    result = db_service.get_articles(Consumer(1, "1", "consumer", "email"))
-
-    assert result == articles
-    db_service.articles.get_articles.assert_called_once()
-
-def test_get_channels(mocker, db_service):
-    channels = [Channel(1, "1", "title", "link")]
-    mocker.patch.object(db_service.channels, "get_channels", return_value=channels)
-
-    result = db_service.get_channels()
-
-    assert result == channels
-    db_service.channels.get_channels.assert_called_once()
-
-@pytest.mark.parametrize(
-    "email_consumer, username_consumer, error, email, username",
-    [
-        (Consumer(1, "", "", ""), None, InternalError(public_message=f"Email already used: e.",status_code=status.HTTP_400_BAD_REQUEST), "e", "u"),
-        (None, Consumer(1, "", "", ""), InternalError(public_message=f"Username already used: u.",status_code=status.HTTP_400_BAD_REQUEST), "e", "u"),
-        (None, None, None, "", "")
-    ]
-    
+from app.core.errors import (
+    ArticleNotFoundError,
+    EmailAlreadyUsedError,
+    InvalidCredentialsError,
+    InvalidCurrentPasswordError,
+    PasswordReuseError,
+    RegistrationExpiredError,
+    UsernameAlreadyUsedError,
 )
-def test_username_or_email_used(db_service, mocker, email_consumer, username_consumer, error, email, username):
-    mocker.patch.object(db_service.consumers, "get_consumer_by_email", return_value=email_consumer)
-    mocker.patch.object(db_service.consumers, "get_consumer_by_username", return_value=username_consumer)
-    if error:
-        with pytest.raises(InternalError) as e:
-            db_service.is_username_or_email_used(email=email, username=username)
+from app.services import ArticleService, ChannelService, ConsumerService
 
-        raised_error = e.value
-        assert type(raised_error) == type(error)
-        assert raised_error.public_message == error.public_message
-        assert raised_error.status_code == error.status_code
 
-    else:
-        result = db_service.is_username_or_email_used(email=email, username=username)
-        assert result == None
+def test_article_service_reads_from_repository(mocker, consumer, article):
+    articles_repo = mocker.Mock()
+    cache = mocker.Mock()
+    service = ArticleService(articles=articles_repo, cache=cache)
+    articles_repo.get_articles.return_value = [article]
 
-def test_register_consumer(mocker, db_service, registration_dto):
-    consumer: Consumer = Consumer(1, "1", registration_dto.username, registration_dto.email)
-    mocker.patch.object(db_service.consumers, "register_consumer", return_value=consumer)
+    result = service.get_articles(consumer=consumer, hours=2)
 
-    returned_consumer = db_service.register_consumer(registration_dto)
+    assert result == [article]
+    articles_repo.get_articles.assert_called_once_with(consumer=consumer, hours=2)
 
-    assert returned_consumer == consumer
-    db_service.consumers.register_consumer.assert_called_once()
 
-@pytest.mark.parametrize(
-    "credential, email_consumer, username_consumer, error",
-    [
-        ("", Consumer(1, "", "", ""), None, None),
-        ("", None, Consumer(1, "", "", ""), None),
-        ("", None, None, InternalError(public_message=f"No consumer found with provided credential: .", status_code=status.HTTP_400_BAD_REQUEST))
-    ]
-)
-def test_get_consumer_by_credential(mocker, db_service, credential, email_consumer, username_consumer, error):
-    mocker.patch.object(db_service.consumers, "get_consumer_by_username", return_value=username_consumer)
-    mocker.patch.object(db_service.consumers, "get_consumer_by_email", return_value=email_consumer)
-    if error:
-        with pytest.raises(InternalError) as e:
-            db_service.get_consumer_by_credential(credential)
+def test_article_service_caches_fetched_article(mocker, article):
+    articles_repo = mocker.Mock()
+    cache = mocker.Mock()
+    cache.get_article.return_value = None
+    articles_repo.get_article.return_value = article
+    service = ArticleService(articles=articles_repo, cache=cache)
 
-        assert type(e.value) == type(error)
-        assert e.value.public_message == error.public_message
-        assert e.value.status_code == error.status_code
+    result = service.get_article("article-uuid")
 
-    else:
-        result = db_service.get_consumer_by_credential(credential)
-        assert result == email_consumer or result == username_consumer
+    assert result == article
+    cache.set_article.assert_called_once_with(article=article)
 
-@pytest.mark.parametrize(
-    "hash, error, id",
-    [
-        (None, InternalError(internal_message=f"No hash found for consumers id: {1}"), 1),
-        ("hash", None, 1)
-    ]
-)
-def test_get_consumers_hash(mocker, db_service, hash, error, id):
-    mocker.patch.object(db_service.consumers, "get_consumers_hash", return_value=hash)
-    if error:
-        with pytest.raises(InternalError) as e:
-            db_service.get_consumers_hash(id)
 
-        assert type(e.value) == type(error)
-        assert e.value.internal_message == error.internal_message
-        assert e.value.status_code == error.status_code
+def test_article_service_like_raises_for_missing_article(mocker, consumer):
+    articles_repo = mocker.Mock()
+    articles_repo.article_uuid_to_id.return_value = None
+    service = ArticleService(articles=articles_repo, cache=mocker.Mock())
 
-    else:
-        result = db_service.get_consumers_hash(id)
-        assert result == hash
+    with pytest.raises(ArticleNotFoundError):
+        service.like_article("missing-uuid", consumer)
 
-@pytest.mark.parametrize(
-    "id, error, uuid",
-    [
-        (1, None, "###"), 
-        (None, InternalError(public_message=f"No article found for provided uuid: ###",status_code=status.HTTP_400_BAD_REQUEST), "###")
-    ]
-)
-def test_like_article(mocker, db_service, id, error, uuid):
-    mocker.patch.object(db_service.articles, "article_uuid_to_id", return_value= id)
-    mocker.patch.object(db_service.articles, "like_article", return_value= True)
-    consumer: Consumer = Consumer(1, "", "", "")
 
-    if error: 
-        with pytest.raises(InternalError) as e:
-            db_service.like_article(uuid, consumer)
+def test_channel_service_prefers_cache(mocker, channel):
+    cache = mocker.Mock()
+    cache.get_available_channels.return_value = [channel]
+    repository = mocker.Mock()
+    service = ChannelService(channels=repository, cache=cache, scraping_service=None)
 
-        assert type(e.value) == type(error)
-        assert e.value.public_message == error.public_message
-        assert e.value.status_code == error.status_code
-        db_service.articles.like_article.assert_not_called()
+    result = service.get_channels(user_id=1)
 
-    else:
-        result = db_service.like_article(uuid, consumer)
-        assert result == True
-        db_service.articles.like_article.assert_called_once_with(article_id=id, consumer_id=consumer.id)
+    assert result == [channel]
+    repository.get_channels.assert_not_called()
+
+
+def test_channel_service_updates_disabled_channels(mocker):
+    cache = mocker.Mock()
+    repository = mocker.Mock()
+    service = ChannelService(channels=repository, cache=cache, scraping_service=None)
+    disabled_channels = [mocker.Mock(uuid="channel-uuid")]
+
+    service.set_disabled_channels(1, disabled_channels)
+
+    cache.invalidate_cache_channels.assert_called_once_with(user_id=1)
+    repository.set_disabled_channels_by_uuids.assert_called_once_with(1, ["channel-uuid"])
+
+
+def test_consumer_service_validate_new_registration(mocker, registration_dto):
+    consumers = mocker.Mock()
+    consumers.get_consumer_by_email.return_value = None
+    consumers.get_consumer_by_username.return_value = None
+    service = ConsumerService(consumers=consumers, cache=mocker.Mock(), security=mocker.Mock(), email=mocker.Mock())
+
+    service.validate_new_registration(registration_dto)
+
+
+def test_consumer_service_rejects_duplicate_email(mocker, registration_dto, consumer):
+    consumers = mocker.Mock()
+    consumers.get_consumer_by_email.return_value = consumer
+    service = ConsumerService(consumers=consumers, cache=mocker.Mock(), security=mocker.Mock(), email=mocker.Mock())
+
+    with pytest.raises(EmailAlreadyUsedError):
+        service.validate_new_registration(registration_dto)
+
+
+def test_consumer_service_rejects_duplicate_username(mocker, registration_dto, consumer):
+    consumers = mocker.Mock()
+    consumers.get_consumer_by_email.return_value = None
+    consumers.get_consumer_by_username.return_value = consumer
+    service = ConsumerService(consumers=consumers, cache=mocker.Mock(), security=mocker.Mock(), email=mocker.Mock())
+
+    with pytest.raises(UsernameAlreadyUsedError):
+        service.validate_new_registration(registration_dto)
+
+
+def test_consumer_service_registration_expired(mocker):
+    cache = mocker.Mock()
+    cache.provided_code_correct.return_value = None
+    service = ConsumerService(consumers=mocker.Mock(), cache=cache, security=mocker.Mock(), email=mocker.Mock())
+
+    with pytest.raises(RegistrationExpiredError):
+        service.register_consumer("user@example.com", 111111)
+
+
+def test_consumer_service_authenticate_invalid_credential(mocker):
+    service = ConsumerService(consumers=mocker.Mock(), cache=mocker.Mock(), security=mocker.Mock(), email=mocker.Mock())
+    service.get_consumer_by_credential = mocker.Mock(return_value=None)
+
+    with pytest.raises(InvalidCredentialsError):
+        service.authenticate("username", "password")
+
+
+def test_consumer_service_authenticate_invalid_password(mocker, consumer):
+    security = mocker.Mock()
+    security.verify_password.return_value = False
+    service = ConsumerService(consumers=mocker.Mock(), cache=mocker.Mock(), security=security, email=mocker.Mock())
+    service.get_consumer_by_credential = mocker.Mock(return_value=consumer)
+    service.get_consumers_hash = mocker.Mock(return_value="saved-hash")
+
+    with pytest.raises(InvalidCredentialsError):
+        service.authenticate("username", "password")
+
+
+def test_consumer_service_update_credentials_invalid_current_password(mocker, consumer, update_credentials_dto):
+    security = mocker.Mock()
+    security.verify_password.return_value = False
+    service = ConsumerService(consumers=mocker.Mock(), cache=mocker.Mock(), security=security, email=mocker.Mock())
+    service.get_consumers_hash = mocker.Mock(return_value="saved-hash")
+
+    with pytest.raises(InvalidCurrentPasswordError):
+        service.update_credentials_and_issue_token(update_credentials_dto, consumer)
+
+
+def test_consumer_service_prevents_password_reuse(mocker, consumer, update_credentials_dto):
+    security = mocker.Mock()
+    security.verify_password.return_value = True
+    security.is_password_identical_to_hash.return_value = True
+    service = ConsumerService(consumers=mocker.Mock(), cache=mocker.Mock(), security=security, email=mocker.Mock())
+    service.get_consumers_hash = mocker.Mock(return_value="saved-hash")
+
+    with pytest.raises(PasswordReuseError):
+        service.update_credentials_and_issue_token(update_credentials_dto, consumer)

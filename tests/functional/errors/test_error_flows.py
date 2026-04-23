@@ -1,55 +1,31 @@
-from starlette.testclient import TestClient
-from run import app
+from app.core.errors import ArticleNotFoundError
 
-def test_not_authorized(redis_container_setup, postgres_container_setup, db_connection, cache_client, email_mock):
-    test_client = TestClient(app, raise_server_exceptions=False)
 
-    response = test_client.get("/latest/articles/")
-    assert response.status_code == 401
+def test_not_authorized(client):
+    assert client.get("/v1/articles/").status_code == 401
+    assert client.get("/v1/channels/").status_code == 401
+    assert client.get("/v1/consumers/me").status_code == 401
+    assert client.post("/v1/articles/article-uuid/like").status_code == 401
 
-    response = test_client.get("/latest/channels/")
-    assert response.status_code == 401
 
-    response = test_client.get("/latest/consumers/get_currently_logged_consumer")
-    assert response.status_code == 401
+def test_invalid_article_uuid(client, auth_headers, functional_services):
+    functional_services.article_service.like_article.side_effect = ArticleNotFoundError()
 
-    response = test_client.post("/latest/likes/like_article", params={"article_uuid": "1"})
-    assert response.status_code == 401
-
-def test_invalid_article_uuid(redis_container_setup, postgres_container_setup, db_connection, cache_client, email_mock):
-    client = TestClient(app, raise_server_exceptions=False)
-
-    response = client.post("/latest/consumers/login", data={"username": "username", "password": "password"})
+    response = client.post("/v1/articles/missing-uuid/like", headers=auth_headers)
     json_response = response.json()
-    assert response.status_code == 200
 
-    token = json_response["access_token"]
-    token_type = json_response["token_type"]
+    assert response.status_code == 404
+    assert json_response == {"success": False, "message": "Article not found."}
 
-    headers = {
-        "Authorization": f"{token_type} {token}"
+
+def test_rate_limit_exceeded(client, auth_headers, functional_services):
+    functional_services.cache_service.can_request_go_through.return_value = False
+
+    response = client.get("/v1/articles/", headers=auth_headers)
+    json_response = response.json()
+
+    assert response.status_code == 429
+    assert json_response == {
+        "success": False,
+        "message": "Too many requests. Try again in a short moment.",
     }
-
-    invalid_uuid = "#####"
-    response = client.post("/latest/likes/like_article", params={"article_uuid": invalid_uuid}, headers=headers)
-    json_response = response.json()
-    assert json_response["success"] is False
-    assert json_response["message"] == f"No article found for provided uuid: {invalid_uuid}"
-
-def test_invalid_login_credential(redis_container_setup, postgres_container_setup, db_connection, cache_client, email_mock):
-    client = TestClient(app, raise_server_exceptions=False)
-
-    invalid_username = "test"
-    response = client.post("/latest/consumers/login", data={"username": invalid_username, "password": "password"})
-    json_response = response.json()
-    assert json_response["success"] == False
-    assert json_response["message"] == f"No consumer found with provided credential: {invalid_username}."
-
-def test_invalid_login_password(redis_container_setup, postgres_container_setup, db_connection, cache_client, email_mock):
-    client = TestClient(app, raise_server_exceptions=False)
-
-    response = client.post("/latest/consumers/login", data={"username": "username", "password": "test"})
-    json_response = response.json()
-    assert json_response["success"] == False
-    assert json_response["message"] == "Invalid login credentials."
-

@@ -1,24 +1,23 @@
 import pytest
+
 from app.models import DBResult
 
-def test_log_to_db_success(logging_repository, mocker):
-    db_result = DBResult(True, None, None, row_count=1)
-    mocker.patch.object(logging_repository, "_execute", return_value=db_result)
-    logging_repository.log_to_db("")
 
-def test_log_to_db_error(logging_repository, mocker, invalid_db_result):
-    mocker.patch.object(logging_repository, "_execute", return_value=invalid_db_result)
+def test_log_to_db_success(logging_repository, log_record, mocker):
+    mocker.patch.object(logging_repository, "_execute", return_value=DBResult(success=True, data=None, row_count=1))
 
-    with pytest.raises(Exception) as e:
-        logging_repository.log_to_db("")
+    logging_repository.log_to_db(log_record)
 
-    assert str(e.value) == "INVALID_DB_RESULT_MESSAGE"
 
-def test_log_to_db_invalid_row_count(logging_repository, mocker):
-    db_result = DBResult(True, None, None, row_count=0)
-    mocker.patch.object(logging_repository, "_execute", return_value=db_result)
+def test_log_to_db_error(logging_repository, log_record, mocker):
+    mocker.patch.object(logging_repository, "_execute", return_value=DBResult(success=False, error_message="db failed"))
 
-    with pytest.raises(Exception) as e:
-        logging_repository.log_to_db("")
+    with pytest.raises(Exception, match="db failed"):
+        logging_repository.log_to_db(log_record)
 
-    assert str(e.value) == "log_to_db method did not update any rows."
+
+def test_log_to_db_invalid_row_count(logging_repository, log_record, mocker):
+    mocker.patch.object(logging_repository, "_execute", return_value=DBResult(success=True, data=None, row_count=0))
+
+    with pytest.raises(Exception, match="did not update any rows"):
+        logging_repository.log_to_db(log_record)

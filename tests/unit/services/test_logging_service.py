@@ -1,28 +1,28 @@
 import pytest
-from app.handlers import DatabaseLogger, FileLogger
-from app.repositories import LoggingRepository
+
 from app.services import LoggingService
 
+
 def test_db_logging(tmp_path, mocker):
-    mocked_repo = mocker.Mock(spec=LoggingRepository)
-    service = LoggingService(tmp_path, mocked_repo)
-    
-    test_log = "TEST_LOG"
+    repository = mocker.Mock()
+    service = LoggingService(tmp_path / "logs.log", repository)
 
-    service.log_error_to_db(test_log)
+    service.log_error_to_db("TEST_LOG")
 
-    mocked_repo.log_to_db.assert_called_once_with(test_log)
+    repository.log_to_db.assert_called_once_with("TEST_LOG")
 
 
-def test_file_logging(tmp_path, mocker):
+def test_db_logging_without_repository(tmp_path):
+    service = LoggingService(tmp_path / "logs.log")
+
+    with pytest.raises(Exception, match="Logging repository init failed."):
+        service.log_error_to_db("TEST_LOG")
+
+
+def test_file_logging(tmp_path):
     path = tmp_path / "logs.log"
     service = LoggingService(path)
 
-    test_log = "TEST_LOG"
+    service.log_error_to_file("TEST_LOG")
 
-    service.log_error_to_file(test_log)
-
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    assert test_log in content
+    assert "TEST_LOG" in path.read_text(encoding="utf-8")

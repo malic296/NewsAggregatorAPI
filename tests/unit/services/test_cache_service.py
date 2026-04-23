@@ -1,79 +1,71 @@
-from app.models import Channel
-import json
-from dataclasses import asdict
+from app.models import Article, Channel
+from app.schemas import RegistrationDTO
+
 
 def test_is_registration_pending(mocked_redis, cache_service, registration_dto):
-    mocked_redis.exists.return_value = 0
-    is_pending = cache_service.is_registration_pending(registration_dto)
-    assert not is_pending
+    mocked_redis.get.return_value = None
+    assert cache_service.is_registration_pending(registration_dto) is False
 
-    mocked_redis.exists.return_value = 1
-    is_pending = cache_service.is_registration_pending(registration_dto)
-    assert is_pending
-
-def test_delete_registration_from_pending(mocked_redis, cache_service, registration_dto):
-    mocked_redis.exists.return_value = 0
-    cache_service.delete_registration_from_pending(registration_dto)
-    mocked_redis.delete.assert_not_called()
-
-    mocked_redis.exists.return_value = 1
-    cache_service.delete_registration_from_pending(registration_dto)
-    mocked_redis.delete.assert_called_once_with("reg:" + registration_dto.email)
-
-def test_create_pending_registration(mocked_redis, cache_service, registration_dto):
-    code = 111111
-    dict_data: dict = {
-        "code": code,
-        "data": registration_dto.model_dump()
-    }
-
-    mocked_redis.exists.return_value = 0
-    
-    cache_service.create_pending_registration(registration=registration_dto, code=code)
-
-    mocked_redis.setex.assert_called_once_with("reg:" + registration_dto.email, 120, json.dumps(dict_data))
-
-def test_provided_code_correct(mocked_redis, cache_service, registration_dto):
-    code = 111111
-    dict_data: dict = {
-        "code": code,
-        "data": registration_dto.model_dump()
-    }
-
-    mocked_redis.get.return_value = json.dumps(dict_data)
-
-    result = cache_service.provided_code_correct("", 111111)
-    assert result == registration_dto
-
-    result = cache_service.provided_code_correct("", 222222)
-    assert result == None
+    mocked_redis.get.return_value = "present"
+    assert cache_service.is_registration_pending(registration_dto) is True
 
 
-def test_set_channels(mocked_redis, cache_service):
-    channels: list[Channel] = [
-        Channel(1, "1", "title1", "link1"),
-        Channel(2, "2", "title2", "link2")
+def test_create_and_delete_pending_registration(mocked_redis, cache_service, registration_dto):
+    mocked_redis.exists.side_effect = [False, True]
+
+    cache_service.create_pending_registration(registration=registration_dto, code=111111)
+    cache_service.delete_registration_from_pending(registration=registration_dto)
+
+    mocked_redis.setex.assert_called_once()
+    mocked_redis.delete.assert_called_once_with("reg:user@example.com")
+
+
+def test_provided_code_correct(mocked_redis, cache_service):
+    mocked_redis.get.return_value = (
+        '{"code": 111111, "data": {"username": "username", "email": "user@example.com", "password": "password"}}'
+    )
+
+    result = cache_service.provided_code_correct("user@example.com", 111111)
+
+    assert result == RegistrationDTO(username="username", email="user@example.com", password="password")
+    mocked_redis.delete.assert_called_once_with("reg:user@example.com")
+
+
+def test_set_and_get_available_channels(mocked_redis, cache_service):
+    channels = [
+        Channel(id=1, uuid="channel-uuid", title="Channel", link="https://example.com/feed", disabled_by_user=False)
     ]
+    mocked_redis.get.return_value = (
+        '[{"id": 1, "uuid": "channel-uuid", "title": "Channel", "link": "https://example.com/feed",'
+        ' "disabled_by_user": false}]'
+    )
 
-    json_channels = json.dumps([asdict(channel) for channel in channels])
+    cache_service.set_available_channels(channels, user_id=1)
+    fetched_channels = cache_service.get_available_channels(user_id=1)
 
-    cache_service.set_available_channels(channels)
-
-    mocked_redis.setex.assert_called_once_with("data:available_channels", 1800, json_channels)
-
-def test_get_channels(mocked_redis, cache_service):
-    channels: list[Channel] = [
-        Channel(1, "1", "title1", "link1"),
-        Channel(2, "2", "title2", "link2")
-    ]
-
-    json_channels = json.dumps([asdict(channel) for channel in channels])
-
-    mocked_redis.get.return_value = json_channels
-
-    fetched_channels: list[Channel] = cache_service.get_available_channels()
-
+    mocked_redis.setex.assert_called_once()
     assert fetched_channels == channels
 
 
-    
+def test_set_and_get_article(mocked_redis, cache_service, article):
+    mocked_redis.get.return_value = (
+        '{"id": 1, "uuid": "article-uuid", "title": "Title", "link": "https://example.com/article",'
+        ' "description": "Description", "pub_date": "2024-01-01T00:00:00+00:00",'
+        ' "channel_link": "https://example.com/feed", "likes": 2, "liked_by_user": true}'
+    )
+
+    cache_service.set_article(article)
+    fetched_article = cache_service.get_article("article-uuid")
+
+    mocked_redis.setex.assert_called_once()
+    assert isinstance(fetched_article, Article)
+    assert fetched_article.uuid == "article-uuid"
+
+
+def test_rate_limit(mocked_redis, cache_service):
+    mocked_redis.incr.side_effect = [1, 10, 11]
+
+    assert cache_service.can_request_go_through("user-key") is True
+    mocked_redis.expire.assert_called_once_with("user-key", 5)
+    assert cache_service.can_request_go_through("user-key") is True
+    assert cache_service.can_request_go_through("user-key") is False

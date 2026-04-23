@@ -1,87 +1,70 @@
-import pytest
-from fastapi.security import OAuth2PasswordRequestForm
-from starlette.testclient import TestClient
+def test_request_registration(test_client, mock_services):
+    payload = {"username": "username", "email": "user@example.com", "password": "password"}
 
-from app.core.errors import InternalError
-from app.schemas import RegistrationDTO
-from dataclasses import asdict
-
-def test_request_new_registration(test_client, mock_services):
-    registration_dto = RegistrationDTO(username="username", email="email", password="password")
-    mock_services.cache.is_registration_pending.return_value = False
-
-    response = test_client.post("/latest/consumers/register/request_new_registration", json=registration_dto.model_dump())
+    response = test_client.post("/v1/consumers/register", json=payload)
     json_response = response.json()
 
-    mock_services.cache.delete_registration_from_pending.assert_not_called()
-
+    mock_services.consumer_service.request_registration.assert_called_once()
     assert response.status_code == 200
-    assert json_response["message"] == "New pending registration created."
-    assert json_response["success"] == True
-
-def test_request_pending_registration(test_client, mock_services):
-    registration_dto = RegistrationDTO(username="username", email="email", password="password")
-    mock_services.cache.is_registration_pending.return_value = True
-
-    response = test_client.post("/latest/consumers/register/request_new_registration", json=registration_dto.model_dump())
-    json_response = response.json()
-
-    mock_services.cache.delete_registration_from_pending.assert_called_once()
-
-    assert response.status_code == 200
-    assert json_response["message"] == "New pending registration created."
-    assert json_response["success"] == True
-
-def test_verify_email_correct(test_client, mock_services):
-    mock_services.cache.provided_code_correct.return_value = RegistrationDTO(username="username", email="email", password="password")
-    mock_services.security.create_access_token.return_value = "#####"
-
-    response = test_client.post("/latest/consumers/register/verify_email", params={"email": "email", "code": 123456})
-    json_response = response.json()
-
-    assert response.status_code == 200
-    assert json_response["token_type"] == "Bearer"
-    assert json_response["access_token"] == "#####"
-
-def test_verify_email_invalid(test_client, mock_services):
-    mock_services.cache.provided_code_correct.return_value = None
-
-    response = test_client.post("/latest/consumers/register/verify_email", params={"email": "email", "code": 123456})
-    json_response = response.json()
-
-    assert response.status_code == 400
-    assert json_response["success"] == False
-    assert json_response["message"] == "Expired registration request or Invalid code."
-
-def test_login(test_client_without_jwt, mock_services, mocked_consumer):
-    mock_services.db.get_consumer_by_credential.return_value = mocked_consumer
-    mock_services.security.create_access_token.return_value = "#####"
-
-    response = test_client_without_jwt.post("/latest/consumers/login", data={"username": mocked_consumer.username,"password": "test_password"})
-    json_response = response.json()
-
-    mock_services.security.create_access_token.assert_called_once_with({"uuid": mocked_consumer.uuid, "username": mocked_consumer.username, "email": mocked_consumer.email})
-    assert response.status_code == 200
-    assert json_response["token_type"] == "Bearer"
-    assert json_response["access_token"] == "#####"
-
-def test_get_currently_logged_consumer(test_client):
-    response = test_client.get("/latest/consumers/get_currently_logged_consumer")
-    json_response = response.json()
-
-    assert response.status_code == 200
-    assert json_response["success"] == True
-    assert json_response["message"] == "Current user fetched successfully."
-    assert json_response["data"] == {
-        "uuid": "1",
-        "email": "email",
-        "username": "username"
+    assert json_response == {
+        "success": True,
+        "message": "New pending registration created.",
     }
 
-def test_get_currently_logged_consumer_no_token(test_client_without_jwt):
-    response = test_client_without_jwt.get("/latest/consumers/get_currently_logged_consumer", headers={"Authorization": "BEARER"})
+
+def test_verify_registration(test_client, mock_services):
+    mock_services.consumer_service.verify_registration.return_value = "token"
+
+    response = test_client.post("/v1/consumers/verification", params={"email": "user@example.com", "code": 123456})
     json_response = response.json()
 
-    assert response.status_code == 401
-    assert json_response["success"] == False
-    assert json_response["message"] == "You need to login or register first to use this endpoint."
+    mock_services.consumer_service.verify_registration.assert_called_once_with(
+        email="user@example.com",
+        code=123456,
+    )
+    assert response.status_code == 200
+    assert json_response == {"access_token": "token", "token_type": "Bearer"}
+
+
+def test_login(unauthenticated_client, mock_services):
+    mock_services.consumer_service.authenticate.return_value = "token"
+
+    response = unauthenticated_client.post(
+        "/v1/consumers/login",
+        data={"username": "username", "password": "password"},
+    )
+    json_response = response.json()
+
+    mock_services.consumer_service.authenticate.assert_called_once_with("username", "password")
+    assert response.status_code == 200
+    assert json_response == {"access_token": "token", "token_type": "Bearer"}
+
+
+def test_get_current_user(test_client):
+    response = test_client.get("/v1/consumers/me")
+    json_response = response.json()
+
+    assert response.status_code == 200
+    assert json_response == {
+        "success": True,
+        "message": "Current user fetched successfully.",
+        "consumer": {
+            "uuid": "consumer-uuid",
+            "username": "username",
+            "email": "user@example.com",
+        },
+    }
+
+
+def test_update_credentials(test_client, mock_services):
+    mock_services.consumer_service.update_credentials_and_issue_token.return_value = "new-token"
+
+    response = test_client.put(
+        "/v1/consumers/credentials",
+        json={"old_password": "old-password", "new_password": "new-password", "new_username": "new-username"},
+    )
+    json_response = response.json()
+
+    mock_services.consumer_service.update_credentials_and_issue_token.assert_called_once()
+    assert response.status_code == 200
+    assert json_response == {"access_token": "new-token", "token_type": "Bearer"}

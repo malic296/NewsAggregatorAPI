@@ -1,72 +1,83 @@
-from app.core.errors import InternalError
-from app.models import Consumer, Article, DBResult
 import pytest
 
-def test_get_articles_success(mocker, article_repository, db_result_articles):
-    mocker.patch.object(article_repository, '_execute', return_value=db_result_articles)
-
-    articles: list[Article] = article_repository.get_articles(Consumer(1, "1", "consumer", "email"), [1, 2], 3)
-    assert len(articles) == len(db_result_articles.data)
-    assert articles == [Article(**article) for article in db_result_articles.data]
-
-def test_get_articles_fail(mocker, article_repository, invalid_db_result):
-    mocker.patch.object(article_repository, '_execute', return_value=invalid_db_result)
-
-    with pytest.raises(InternalError) as e:
-        article_repository.get_articles(Consumer(1, "1", "consumer", "email"), [1, 2], 3)
-
-    assert str(e.value) == "Failed getting articles with get_articles method because: " + invalid_db_result.error_message
-
-def test_get_articles_invalid_format(mocker, article_repository, db_result_articles):
-    db_result_articles.data = [{k: v for k, v in article.items() if k != "uuid"} for article in db_result_articles.data]
-    mocker.patch.object(article_repository, '_execute', return_value= db_result_articles)
-
-    with pytest.raises(InternalError) as e:
-        article_repository.get_articles(Consumer(1, "1", "consumer", "email"), [1, 2], 3)
-
-    assert "uuid" in str(e.value)
+from app.core.errors import DatabaseError, MappingError
+from app.models import DBResult
 
 
-def test_article_uuid_to_id_success(mocker, article_repository, db_result_id):
-    mocker.patch.object(article_repository, '_execute', return_value=db_result_id)
+def test_get_articles_success(mocker, article_repository, db_result_article, consumer):
+    mocker.patch.object(article_repository, "_execute", return_value=db_result_article)
 
-    id: int = article_repository.article_uuid_to_id("1")
-    assert id == db_result_id.data[0]["id"]
+    articles = article_repository.get_articles(consumer=consumer, hours=3)
 
-def test_article_uuid_to_id_fail(mocker, article_repository, invalid_db_result):
-    mocker.patch.object(article_repository, '_execute', return_value=invalid_db_result)
+    assert len(articles) == 1
+    assert articles[0].uuid == db_result_article.data[0]["uuid"]
 
-    with pytest.raises(InternalError) as e:
-        article_repository.article_uuid_to_id("1")
 
-    assert str(e.value) == "Query created by article_uuid_to_id failed because: " + invalid_db_result.error_message
+def test_get_articles_failure(mocker, article_repository, consumer):
+    mocker.patch.object(article_repository, "_execute", return_value=DBResult(success=False, error_message="db failed"))
 
-def test_article_uuid_to_id_invalid_format(mocker, article_repository, db_result_articles):
-    db_result_articles.data = [{k: v for k, v in article.items() if k != "id"} for article in db_result_articles.data]
-    mocker.patch.object(article_repository, '_execute', return_value= db_result_articles)
+    with pytest.raises(DatabaseError) as exc:
+        article_repository.get_articles(consumer=consumer, hours=3)
 
-    with pytest.raises(InternalError) as e:
-        article_repository.article_uuid_to_id("1")
+    assert exc.value.internal_message == "Query execution failed for method: get_articles. Error message: db failed"
 
-    assert "id" in str(e.value)
 
-def test_like_article_success(mocker, article_repository):
-    mocker.patch.object(article_repository, '_execute', return_value=DBResult(True, None, None, 1))
+def test_get_article_missing_returns_none(mocker, article_repository):
+    mocker.patch.object(article_repository, "_execute", return_value=DBResult(success=True, data=[], row_count=0))
 
-    result: bool = article_repository.like_article(1, 1)
-    assert result == True
+    assert article_repository.get_article("missing") is None
 
-@pytest.mark.parametrize(
-    "db_result, error_message",
-    [
-        (DBResult(True, None, None, row_count=0), "Method like_article did not change any rows."),
-        (DBResult(False, "NONE", None, row_count=0), "Method like_article failed initial select because: NONE."),
-    ]
-)
-def test_like_article_fail(mocker, article_repository, db_result, error_message):
-    mocker.patch.object(article_repository, '_execute', return_value=db_result)
 
-    with pytest.raises(InternalError) as e:
-        article_repository.like_article(1, 1)
+def test_article_uuid_to_id_mapping_error(mocker, article_repository):
+    mocker.patch.object(
+        article_repository,
+        "_execute",
+        return_value=DBResult(success=True, data=[{"wrong_key": 1}], row_count=1),
+    )
 
-    assert str(e.value) == error_message
+    with pytest.raises(MappingError) as exc:
+        article_repository.article_uuid_to_id("article-uuid")
+
+    assert "article_uuid_to_id" in exc.value.internal_message
+
+
+def test_like_article_insert_branch(mocker, article_repository):
+    mocker.patch.object(
+        article_repository,
+        "_execute",
+        side_effect=[
+            DBResult(success=True, data=[], row_count=0),
+            DBResult(success=True, data=None, row_count=1),
+        ],
+    )
+
+    assert article_repository.like_article(article_id=1, consumer_id=1) is True
+
+
+def test_like_article_delete_branch(mocker, article_repository):
+    mocker.patch.object(
+        article_repository,
+        "_execute",
+        side_effect=[
+            DBResult(success=True, data=[{"exists": 1}], row_count=1),
+            DBResult(success=True, data=None, row_count=1),
+        ],
+    )
+
+    assert article_repository.like_article(article_id=1, consumer_id=1) is False
+
+
+def test_like_article_raises_when_no_row_changed(mocker, article_repository):
+    mocker.patch.object(
+        article_repository,
+        "_execute",
+        side_effect=[
+            DBResult(success=True, data=[], row_count=0),
+            DBResult(success=True, data=None, row_count=0),
+        ],
+    )
+
+    with pytest.raises(DatabaseError) as exc:
+        article_repository.like_article(article_id=1, consumer_id=1)
+
+    assert "No rows were changed when liking an article." in exc.value.internal_message

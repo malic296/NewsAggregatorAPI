@@ -1,14 +1,28 @@
-from app.handlers import create_logging_handler
-from app.repositories import LoggingRepository
+import logging
 
-def test_logging_handler(tmp_path, mocker):
-    path = tmp_path / "logs.log"
-    repository = LoggingRepository()
-    mocker.patch.object(repository, "log_to_db", side_effect=Exception("EXCEPTION"))
-    logging_handler = create_logging_handler(path=path, repo=repository)
-    test_log = "TEST_LOG"
-    logging_handler.handle(test_log)
+from app.core.logger.handlers import DatabaseHandler, DropOnFailHandler
 
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
-        assert test_log in content
+
+def test_database_handler_emits_record(log_record):
+    calls = []
+    handler = DatabaseHandler(writer_func=calls.append)
+
+    handler.emit(log_record)
+
+    assert calls == [log_record]
+
+
+def test_drop_on_fail_handler_removes_itself(mocker, log_record):
+    logger = logging.getLogger("tests.logger")
+    logger.handlers = []
+    child_handler = mocker.Mock()
+    child_handler.emit.side_effect = RuntimeError("boom")
+    wrapper = DropOnFailHandler(child_handler)
+    logger.addHandler(wrapper)
+
+    wrapper.emit(log_record)
+    wrapper.emit(log_record)
+
+    assert wrapper._removed is True
+    assert wrapper not in logger.handlers
+    assert child_handler.emit.call_count == 2
