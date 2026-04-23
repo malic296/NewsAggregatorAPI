@@ -10,8 +10,10 @@ from app.repositories.channel_repository import ChannelRepository
 from app.core.logger.handlers import DropOnFailHandler, DatabaseHandler
 from app.repositories import LoggingRepository
 import logging
+from app.core.logger import setup_logging
 
 async def main() -> None:
+    setup_logging()
     settings: Settings = Settings()
     db_pool = create_connection_pool(settings)
     logging_repo = LoggingRepository(connection_pool=db_pool)

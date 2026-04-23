@@ -40,7 +40,7 @@ def me(current_user: Consumer = Depends(get_current_user)):
     return ConsumerResponse(
         success=True,
         message="Current user fetched successfully.",
-        consumers = ConsumerDTO(**asdict(current_user))
+        consumer = ConsumerDTO(**asdict(current_user))
     )
 
 @consumer_router.put("/credentials", response_model=TokenResponse)

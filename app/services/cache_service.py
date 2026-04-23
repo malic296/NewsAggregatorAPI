@@ -116,6 +116,6 @@ class CacheService:
         if requests == 1:
             self._client.expire(user_key, 5)
 
-        return requests <= 3
+        return requests <= 10
 
 

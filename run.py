@@ -9,13 +9,15 @@ from app.core.container import ServiceContainer
 from app.repositories import ArticleRepository, ChannelRepository, ConsumerRepository, LoggingRepository
 from app.services import CacheService, SecurityService, EmailService, ArticleService, ChannelService, ConsumerService
 from app.core.settings import Settings
-from app.core.middlewares import rate_limit_middleware, logging_middleware
+from app.core.middlewares import manage_request
 from app.handlers.exception_handlers import internal_exception_handler, http_exception_handler, unexpected_exception_handler
 from app.core.database import create_connection_pool
 from app.core.logger.handlers import DatabaseHandler, DropOnFailHandler
 import logging
 from app.core.errors import AppError
+from app.core.logger import setup_logging
 
+setup_logging()
 settings = Settings()
 
 @asynccontextmanager
@@ -47,6 +49,8 @@ async def lifespan(app: FastAPI):
     db_wrapper = DropOnFailHandler(db_handler)
     logging.getLogger().addHandler(db_wrapper)
 
+    logging.getLogger(__name__).info("API started.")
+
     # DEPENDENCY CONTAINER
     app.state.services = ServiceContainer(
         article_service=article_service,
@@ -56,6 +60,7 @@ async def lifespan(app: FastAPI):
         email_service=email,
         security_service=security
     )
+
     yield
 
     # FREE RESOURCES
@@ -74,12 +79,8 @@ app.add_middleware(
 )
 
 @app.middleware("http")
-async def rate_limit(request: Request, call_next):
-    return await rate_limit_middleware(request, call_next)
-
-@app.middleware("http")
-async def logging_request(request: Request, call_next):
-    return await logging_middleware(request, call_next)
+async def manage_request_middleware(request: Request, call_next):
+    return await manage_request(request, call_next)
 
 # EXCEPTION HANDLERS
 app.add_exception_handler(Exception, unexpected_exception_handler)
